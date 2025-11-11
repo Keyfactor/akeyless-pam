@@ -9,7 +9,7 @@
         <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
         <PackageId>Keyfactor.PAM.Akeyless</PackageId>
 
-        <DebugSymbols>true</DebugSymbols>
+        <DebugSymbols>false</DebugSymbols>
         <DebugType>portable</DebugType>
         <Optimize>false</Optimize>
     </PropertyGroup>
