@@ -1,0 +1,4 @@
+{
+  "SecretName": "test/pam/staticTextPassword",
+  "SecretFieldName": "password"
+}

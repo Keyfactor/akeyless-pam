@@ -1,0 +1,77 @@
+{
+  "$schema": "https://keyfactor.github.io/integration-manifest-schema.json",
+  "integration_type": "pam",
+  "name": "Akeyless PAM Provider",
+  "status": "production",
+  "support_level": "kf-supported",
+  "link_github": false,
+  "update_catalog": false,
+  "release_dir": "akeyless-pam/bin/Release",
+  "release_project": "akeyless-pam/akeyless-pam.csproj",
+  "description": "The Akeyless PAM Provider allows for the retrieval of stored account credentials from an Akeyless secret.",
+  "about": {
+    "pam": {
+      "providerName": "Akeyless PAM Provider",
+      "assemblyName": "akeyless-pam",
+      "dbName": "Akeyless",
+      "fullyQualifiedClassName": "Keyfactor.Extensions.Pam.Akeyless",
+      "pam_types": [
+        {
+          "Name": "Akeyless",
+          "Parameters": [
+            {
+              "Name": "Url",
+              "DisplayName": "Secret Server URL",
+              "Description": "The URL to the Secret Server instance. Example: https://example.cloud.com/",
+              "DataType": 1,
+              "InstanceLevel": false
+            },
+            {
+              "Name": "AccessKeyId",
+              "DisplayName": "Access Key ID",
+              "Description": "The access key ID used to authenticate to Akeyless using `access_key` authentication.",
+              "DataType": 2,
+              "InstanceLevel": false
+            },
+            {
+              "Name": "AccessKey",
+              "DisplayName": "Access Key",
+              "Description": "The access key used to authenticate to Akeyless using `access_key` authentication.",
+              "DataType": 2,
+              "InstanceLevel": false
+            },
+            {
+              "Name": "AuthType",
+              "DisplayName": "Auth Type",
+              "Description": "The auth type used to authenticate to the Akeyless platform. Supported types are `access_key`.",
+              "DataType": 1,
+              "InstanceLevel": false
+            },
+            {
+              "Name": "SecretName",
+              "DisplayName": "Secret Name",
+              "Description": "The full name (path) of the secret in Akeyless that contains the credential to retrieve.",
+              "DataType": 1,
+              "InstanceLevel": true
+            },
+            {
+              "Name": "SecretType",
+              "DisplayName": "Secret Type",
+              "Description": "The type of secret stored in Akeyless. Supported types are `static_kv,static_text,static_json`.",
+              "DataType": 1,
+              "InstanceLevel": true
+            },
+            {
+              "Name": "StaticSecretFieldName",
+              "DisplayName": "Static Secret Field Name",
+              "Description": "The field name within a static secret to retrieve the credential from. Required for `static_kv` and optional for `static_json` secret types.",
+              "DataType": 1,
+              "InstanceLevel": true
+            }
+          ]
+        }
+      ]
+      }
+    }
+  }
+}
