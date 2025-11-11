@@ -8,15 +8,18 @@
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
         <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
         <PackageId>Keyfactor.PAM.Akeyless</PackageId>
-
-        <DebugSymbols>true</DebugSymbols>
-        <DebugType>portable</DebugType>
-        <Optimize>false</Optimize>
+        
+        <Optimize>true</Optimize>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
         <DebugType>none</DebugType>
         <DebugSymbols>false</DebugSymbols>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+        <DebugType>portable</DebugType>
+        <DebugSymbols>true</DebugSymbols>
     </PropertyGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
