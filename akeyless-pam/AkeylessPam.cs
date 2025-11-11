@@ -185,6 +185,7 @@ public class AkeylessPam : IPAMProvider
                 Logger.LogDebug("No field name specified, returning full JSON secret");
                 return secretValueStr;
             }
+
             if (jsonObj != null && jsonObj.TryGetValue(fieldName, out var fieldValue))
             {
                 Logger.LogDebug("Returning value for field '{FieldName}'", fieldName);
@@ -311,7 +312,7 @@ public class AkeylessPam : IPAMProvider
             Logger.LogDebug("Attempting to fetch access token from Akeyless at {Url}",
                 configurationInfo.Url);
             var client = InitClient(configurationInfo);
-            
+
             switch (configurationInfo.SecretType)
             {
                 case "static_text":

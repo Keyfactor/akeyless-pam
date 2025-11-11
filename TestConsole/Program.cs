@@ -74,7 +74,7 @@ internal class Program
         instanceParams.Remove("StaticSecretFieldName");
         var jsonRaw = pam.GetPassword(instanceParams, initInfo);
         Console.WriteLine($"ServerSecret: {jsonRaw}");
-        
+
         Console.WriteLine("Test completed.");
     }
 }
