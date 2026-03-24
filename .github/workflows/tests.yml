@@ -24,7 +24,7 @@ jobs:
         run: dotnet restore tests/AkeylessPam.Unit.Tests/AkeylessPam.Unit.Tests.csproj
 
       - name: Run unit tests
-        run: dotnet test tests/AkeylessPam.Unit.Tests/ --no-restore --logger "github" --collect:"XPlat Code Coverage" --results-directory ./coverage
+        run: dotnet test tests/AkeylessPam.Unit.Tests/ --no-restore --collect:"XPlat Code Coverage" --results-directory ./coverage
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
@@ -59,4 +59,4 @@ jobs:
           AKEYLESS_SECRET_STATIC_KV: ${{ vars.AKEYLESS_SECRET_STATIC_KV }}
           AKEYLESS_SECRET_STATIC_JSON: ${{ vars.AKEYLESS_SECRET_STATIC_JSON }}
           AKEYLESS_SECRET_STATIC_JSON_RAW: ${{ vars.AKEYLESS_SECRET_STATIC_JSON_RAW }}
-        run: dotnet test tests/AkeylessPam.Integration.Tests/ --no-restore --logger "github"
+        run: dotnet test tests/AkeylessPam.Integration.Tests/ --no-restore
