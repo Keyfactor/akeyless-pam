@@ -158,7 +158,6 @@ public class AkeylessConfigurationTests
     public void Constants_DefaultAuthMethod_IsAccessKey()
     {
         Assert.Equal("access_key", AkeylessConstants.DefaultAuthMethod);
-        Assert.Equal("access_key", AkeylessConstants.DefaultAuthMethodReadOnly);
     }
 
     [Fact]

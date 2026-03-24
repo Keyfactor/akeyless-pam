@@ -31,7 +31,7 @@
 
 ## Overview
 
-The Akeyless PAM Provider allows for the retrieval of stored account credentials from a Akeyless secret.
+The Akeyless PAM Provider allows for the retrieval of stored account credentials from an Akeyless secret.
 
 ## Support
 The Akeyless PAM Provider is supported by Keyfactor for Keyfactor customers. If you have a support issue, please open a support ticket with your Keyfactor representative. If you have a support issue, please open a support ticket via the Keyfactor Support Portal at https://support.keyfactor.com. 
@@ -249,7 +249,7 @@ Below is the payload to `POST` to the Keyfactor Command API
 
 
 ##### Define a PAM provider in Command
-1. In the Keyfactor Command Portal, hover over the ⚙️  (settings) icon in the top right corner of the screen and select **Priviledged Access Management**.
+1. In the Keyfactor Command Portal, hover over the ⚙️  (settings) icon in the top right corner of the screen and select **Privileged Access Management**.
 
 2. Select the **Add** button to create a new PAM provider. Click the dropdown for **Provider Type** and select **Akeyless**.
 
@@ -294,7 +294,7 @@ Select the **Load From PAM Provider** tab, choose the **Akeyless** provider from
 
 In Command 11 and greater, before using the Akeyless PAM type, you must define a Remote PAM Provider in the Command portal.
 
-1. In the Keyfactor Command Portal, hover over the ⚙️  (settings) icon in the top right corner of the screen and select **Priviledged Access Management**.
+1. In the Keyfactor Command Portal, hover over the ⚙️  (settings) icon in the top right corner of the screen and select **Privileged Access Management**.
 
 2. Select the **Add** button to create a new PAM provider.
 

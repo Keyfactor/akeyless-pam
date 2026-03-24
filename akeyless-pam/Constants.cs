@@ -7,6 +7,4 @@ public static class AkeylessConstants
 
     public const string DefaultAkeylessApiUrl = "https://api.akeyless.io";
 
-    // Recommended for libraries: avoids inlining so you can change value without recompiling dependents
-    public static readonly string DefaultAuthMethodReadOnly = "access_key";
 }

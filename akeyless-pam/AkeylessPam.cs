@@ -38,6 +38,12 @@ public class InvalidTokenException : Exception
     }
 }
 
+/// <summary>
+///     Exception thrown when the client configuration for connecting to Akeyless is invalid or incomplete.
+/// </summary>
+/// <remarks>
+///     This exception is typically thrown when required connection or authentication parameters are missing or incorrect.
+/// </remarks>
 public class InvalidClientConfigurationException : Exception
 {
     /// <summary>
@@ -50,6 +56,12 @@ public class InvalidClientConfigurationException : Exception
     }
 }
 
+/// <summary>
+///     Exception thrown when the secret configuration for Akeyless is invalid or incomplete.
+/// </summary>
+/// <remarks>
+///     This exception is typically thrown when required secret parameters are missing or improperly configured.
+/// </remarks>
 public class InvalidSecretConfigurationException : Exception
 {
     /// <summary>
@@ -451,7 +463,7 @@ public class AkeylessPam : IPAMProvider
             Logger.MethodEntry();
             Logger.LogDebug("Validating required parameter '{ParamName}'", paramName);
 
-            if (config.ContainsKey(paramName) && !string.IsNullOrEmpty(config[paramName])) return;
+            if (config.TryGetValue(paramName, out var value) && !string.IsNullOrEmpty(value)) return;
             Logger.LogError("{ErrorPrefix} '{ParamName}' is required but was not provided", errorPrefix, paramName);
             throw new MissingFieldException($"{errorPrefix} '{paramName}' not provided");
         }
@@ -491,7 +503,7 @@ public class AkeylessPam : IPAMProvider
     }
 
     /// <summary>
-    ///     Creates a AkeylessConfiguration object from the provided parameters.
+    ///     Creates an AkeylessConfiguration object from the provided parameters.
     /// </summary>
     /// <param name="instanceParameters">
     ///     Dictionary containing instance-specific parameters, including the secret name and field
