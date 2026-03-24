@@ -1,5 +1,5 @@
 {
-  "$schema": "https://keyfactor.github.io/integration-manifest-schema.json",
+  "$schema": "https://keyfactor.github.io/v2/integration-manifest-schema.json",
   "integration_type": "pam",
   "name": "Akeyless PAM Provider",
   "status": "production",
@@ -21,8 +21,8 @@
           "Parameters": [
             {
               "Name": "Url",
-              "DisplayName": "Secret Server URL",
-              "Description": "The URL to the Secret Server instance. Example: https://example.cloud.com/",
+              "DisplayName": "Akeyless URL",
+              "Description": "The URL to the Akeyless instance. Defaults to: https://api.akeyless.io",
               "DataType": 1,
               "InstanceLevel": false
             },

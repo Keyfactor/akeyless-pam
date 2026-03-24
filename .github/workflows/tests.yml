@@ -15,7 +15,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Restore
         run: dotnet restore tests/AkeylessPam.Unit.Tests/AkeylessPam.Unit.Tests.csproj
@@ -38,7 +38,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Restore
         run: dotnet restore tests/AkeylessPam.Integration.Tests/AkeylessPam.Integration.Tests.csproj
