@@ -40,6 +40,7 @@ internal class AkeylessConfiguration : IValidatableObject
         Url = string.Empty;
         AccessId = string.Empty;
         AccessKey = string.Empty;
+        SecretName = string.Empty;
         StaticSecretFieldName = string.Empty;
         AuthType = "access_key"; // Default value is already set in property declaration
     }
