@@ -99,21 +99,19 @@ public class AkeylessPam : IPAMProvider
     ///     Dictionary containing connection and authentication parameters such as host URL,
     ///     username, and password.
     /// </param>
-    /// <returns>The password value retrieved from.</returns>
+    /// <returns>The password value retrieved from Akeyless.</returns>
     /// <exception cref="Exception">Thrown when required parameters are missing or invalid.</exception>
-    /// <exception cref="InvalidTokenException">Thrown when authentication with fails.</exception>
-    /// <exception cref="HttpRequestException">Thrown when communication with fails.</exception>
+    /// <exception cref="InvalidTokenException">Thrown when authentication with Akeyless fails.</exception>
+    /// <exception cref="HttpRequestException">Thrown when communication with Akeyless fails.</exception>
     public string GetPassword(Dictionary<string, string> instanceParameters,
         Dictionary<string, string> serverConfigurationParameters)
     {
         try
         {
             Logger.MethodEntry();
-            Logger.LogInformation("Starting Akeyless PAM Provider");
-            Logger.LogDebug("Getting password from Akeyless");
+            Logger.LogDebug("Akeyless PAM Provider invoked");
+            // NOTE: serverConfigurationParameters intentionally not logged — contains AccessId/AccessKey.
             Logger.LogTrace("instanceParameters: {@InstanceParameters}", instanceParameters);
-            // Logger.LogTrace("initializationInfo: {@ServerConfigurationParameters}",
-            //     serverConfigurationParameters); // TODO: Commented out to avoid logging sensitive information
 
             var config = BuildAkeylessConfiguration(instanceParameters, serverConfigurationParameters);
             return GetAkeylessSecretAsync(config).Result;
@@ -137,21 +135,27 @@ public class AkeylessPam : IPAMProvider
             switch (configurationInfo.AuthType)
             {
                 case "access_key":
-                    Logger.LogDebug("Authenticating with Akeyless using access_key");
+                    Logger.LogDebug("Authenticating with Akeyless using access_key auth, AccessId: '{AccessId}'",
+                        configurationInfo.AccessId);
                     var token = client.Authenticate(configurationInfo.AccessId, configurationInfo.AccessKey);
 
                     if (string.IsNullOrEmpty(token))
                     {
-                        Logger.LogError("Unable to obtain access token from Akeyless server");
+                        Logger.LogError(
+                            "Authentication failed: unable to obtain access token from Akeyless for AccessId '{AccessId}'",
+                            configurationInfo.AccessId);
                         throw new InvalidTokenException("Unable to obtain access token from Akeyless server");
                     }
 
                     AuthToken = token;
-                    Logger.LogInformation("Successfully authenticated with Akeyless");
+                    Logger.LogInformation(
+                        "Successfully authenticated with Akeyless using AccessId '{AccessId}'",
+                        configurationInfo.AccessId);
                     break;
 
                 default:
-                    Logger.LogWarning("No authentication performed for auth type '{AuthType}'",
+                    Logger.LogWarning(
+                        "No authentication performed for unrecognised auth type '{AuthType}'",
                         configurationInfo.AuthType);
                     break;
             }
@@ -160,7 +164,7 @@ public class AkeylessPam : IPAMProvider
         }
         catch (ApiException ex)
         {
-            Logger.LogError(ex, "Akeyless API exception during client initialization");
+            Logger.LogError(ex, "Akeyless API exception during authentication");
             throw new InvalidClientConfigurationException(
                 $"Unable to authenticate to Akeyless API. {ex.Message}");
         }
@@ -176,7 +180,6 @@ public class AkeylessPam : IPAMProvider
         return (s.StartsWith('{') && s.EndsWith('}')) || (s.StartsWith('[') && s.EndsWith(']'));
     }
 
-
     private string ParseJsonSecret(string secretValueStr, string fieldName = "")
     {
         try
@@ -185,23 +188,23 @@ public class AkeylessPam : IPAMProvider
             var jsonObj = JsonConvert.DeserializeObject<Dictionary<string, object>>(secretValueStr);
             if (string.IsNullOrEmpty(fieldName))
             {
-                Logger.LogDebug("No field name specified, returning full JSON secret");
+                Logger.LogDebug("No field name specified; returning full JSON blob");
                 return secretValueStr;
             }
 
             if (jsonObj != null && jsonObj.TryGetValue(fieldName, out var fieldValue))
             {
-                Logger.LogDebug("Returning value for field '{FieldName}'", fieldName);
+                Logger.LogDebug("Successfully extracted field '{FieldName}' from JSON secret", fieldName);
                 return fieldValue.ToString() ?? string.Empty;
             }
 
-            Logger.LogError("❌ Secret does not contain the specified field '{FieldName}'", fieldName);
+            Logger.LogError("JSON secret does not contain the specified field '{FieldName}'", fieldName);
             throw new InvalidSecretConfigurationException(
                 $"Secret does not contain the specified field '{fieldName}'");
         }
         catch (JsonException ex)
         {
-            Logger.LogError(ex, "❌ Failed to parse secret as JSON");
+            Logger.LogError(ex, "Failed to parse secret value as JSON");
             throw;
         }
         finally
@@ -215,24 +218,27 @@ public class AkeylessPam : IPAMProvider
         try
         {
             Logger.MethodEntry();
+            var lineIndex = 0;
             foreach (var line in secretValueStr.Split('\n'))
             {
+                lineIndex++;
                 var parts = line.Split('=', 2);
                 if (parts.Length != 2)
                 {
-                    Logger.LogWarning("Skipping malformed KV line: {Line}", line);
+                    Logger.LogWarning("Skipping malformed KV entry at line {LineIndex}", lineIndex);
                     continue;
                 }
 
                 var k = parts[0].Trim();
-                var val = parts[1].Trim();
-                Logger.LogDebug("Key: {Key}, Value: {Value}", k, val);
+                // NOTE: value is intentionally not logged to prevent secret exposure.
+                Logger.LogDebug("Evaluating KV key '{Key}' at line {LineIndex}", k, lineIndex);
                 if (k != fieldName) continue;
-                Logger.LogDebug("Returning value for field '{FieldName}'", fieldName);
-                return val;
+
+                Logger.LogDebug("Successfully extracted field '{FieldName}' from KV secret", fieldName);
+                return parts[1].Trim();
             }
 
-            Logger.LogError("❌ Secret does not contain the specified field '{FieldName}'", fieldName);
+            Logger.LogError("KV secret does not contain the specified field '{FieldName}'", fieldName);
             throw new InvalidSecretConfigurationException(
                 $"Secret does not contain the specified field '{fieldName}'");
         }
@@ -247,14 +253,14 @@ public class AkeylessPam : IPAMProvider
         try
         {
             Logger.MethodEntry();
-            Logger.LogDebug("Fetching static text secret '{SecretName}'",
-                configurationInfo.SecretName);
+            Logger.LogDebug("Fetching secret '{SecretName}' (type: {SecretType}) from Akeyless",
+                configurationInfo.SecretName, configurationInfo.SecretType);
 
             var secrets = await client.GetSecretValuesAsync([configurationInfo.SecretName], AuthToken);
 
             if (!secrets.TryGetValue(configurationInfo.SecretName, out var secretValueStr))
             {
-                Logger.LogError("Secret '{SecretName}' not found in Akeyless",
+                Logger.LogError("Secret '{SecretName}' was not found in Akeyless",
                     configurationInfo.SecretName);
                 throw new InvalidSecretConfigurationException(
                     $"Secret '{configurationInfo.SecretName}' not found in Akeyless");
@@ -262,33 +268,35 @@ public class AkeylessPam : IPAMProvider
 
             if (string.IsNullOrEmpty(secretValueStr))
             {
-                Logger.LogError("Secret '{SecretName}' has an empty value",
+                Logger.LogError("Secret '{SecretName}' exists in Akeyless but has an empty value",
                     configurationInfo.SecretName);
                 throw new InvalidSecretConfigurationException(
                     $"Secret '{configurationInfo.SecretName}' is empty");
             }
 
+            string result;
             if (LooksLikeJson(secretValueStr))
             {
-                Logger.LogInformation("✅ Secret '{SecretName}' appears to be JSON",
-                    configurationInfo.SecretName);
-                // Parse JSON if secret isn't meant to be a full JSON blob else returns the JSON blob
-                return configurationInfo.SecretType is "static_json" or "static_kv"
+                Logger.LogDebug("Secret '{SecretName}' value is JSON-formatted", configurationInfo.SecretName);
+                result = configurationInfo.SecretType is "static_json" or "static_kv"
                     ? ParseJsonSecret(secretValueStr, configurationInfo.StaticSecretFieldName)
                     : secretValueStr;
             }
-
-            if (secretValueStr.Contains('=') && secretValueStr.Contains('\n'))
+            else if (secretValueStr.Contains('=') && secretValueStr.Contains('\n'))
             {
-                Logger.LogInformation("✅ Secret '{SecretName}' appears to be KV formatted",
-                    configurationInfo.SecretName);
-                return ParseKvSecret(secretValueStr, configurationInfo.StaticSecretFieldName);
+                Logger.LogDebug("Secret '{SecretName}' value is KV-formatted", configurationInfo.SecretName);
+                result = ParseKvSecret(secretValueStr, configurationInfo.StaticSecretFieldName);
+            }
+            else
+            {
+                Logger.LogDebug("Secret '{SecretName}' value is plain text", configurationInfo.SecretName);
+                result = secretValueStr;
             }
 
-
-            Logger.LogInformation("✅ Secret '{SecretName}' appears to be plain text",
-                configurationInfo.SecretName);
-            return secretValueStr;
+            Logger.LogInformation(
+                "Successfully retrieved secret '{SecretName}' (type: {SecretType}) from Akeyless",
+                configurationInfo.SecretName, configurationInfo.SecretType);
+            return result;
         }
         finally
         {
@@ -301,15 +309,14 @@ public class AkeylessPam : IPAMProvider
     /// </summary>
     /// <param name="configurationInfo">The configuration containing connection and request details.</param>
     /// <returns>The value of the requested secret field.</returns>
-    /// <exception cref="HttpRequestException">Thrown when the HTTP request to fails.</exception>
+    /// <exception cref="HttpRequestException">Thrown when the HTTP request to Akeyless fails.</exception>
     /// <exception cref="Exception">Thrown when deserializing the response fails or the requested secret is not found.</exception>
     private async Task<string> GetAkeylessSecretAsync(AkeylessConfiguration configurationInfo)
     {
         try
         {
             Logger.MethodEntry();
-            Logger.LogDebug("Attempting to fetch access token from Akeyless at {Url}",
-                configurationInfo.Url);
+            Logger.LogDebug("Connecting to Akeyless at '{Url}'", configurationInfo.Url);
             var client = InitClient(configurationInfo);
 
             switch (configurationInfo.SecretType)
@@ -319,8 +326,9 @@ public class AkeylessPam : IPAMProvider
                 case "static_json":
                     return await GetStaticSecret(client, configurationInfo);
                 default:
-                    Logger.LogError("Invalid or unsupported secret type '{SecretType}' specified",
-                        configurationInfo.SecretType);
+                    Logger.LogError("Unsupported secret type '{SecretType}' — valid types are: {ValidTypes}",
+                        configurationInfo.SecretType,
+                        string.Join(", ", AkeylessConfiguration.SupportedSecretTypes));
                     throw new Exception(
                         $"Invalid secret type '{configurationInfo.SecretType}' specified, please use one of [{string.Join(", ", AkeylessConfiguration.SupportedSecretTypes)}]");
             }
@@ -390,29 +398,26 @@ public class AkeylessPam : IPAMProvider
         try
         {
             Logger.MethodEntry();
-            Logger.LogDebug("Validating server configuration parameters");
+            Logger.LogDebug("Validating server configuration parameters for auth type '{AuthType}'", authType);
 
-            // Validate credentials based on grant type
             switch (authType)
             {
                 case "implicit":
-                    Logger.LogWarning("No validation performed for 'implicit' auth type");
+                    Logger.LogWarning("No credential validation performed for 'implicit' auth type");
                     break;
 
                 case "access_key":
-                    Logger.LogDebug("Validating credentials for 'access_key' auth type");
+                    Logger.LogDebug("Validating access_key credentials");
                     ValidateAuthTypeAccessKey(connectionConfiguration);
                     break;
                 default:
-                    Logger.LogError(
-                        "Invalid auth type '{AuthType}'",
-                        authType);
+                    Logger.LogError("Unsupported auth type '{AuthType}' specified in server configuration", authType);
                     Logger.MethodExit();
                     throw new Exception(
                         $"Invalid auth type '{authType}' specified.");
             }
 
-            Logger.LogInformation("Server configuration parameters are valid");
+            Logger.LogDebug("Server configuration parameters are valid");
             return true;
         }
         finally
@@ -444,10 +449,10 @@ public class AkeylessPam : IPAMProvider
         try
         {
             Logger.MethodEntry();
-            Logger.LogDebug("Validating parameter '{ParamName}'", paramName);
+            Logger.LogDebug("Validating required parameter '{ParamName}'", paramName);
 
             if (config.ContainsKey(paramName) && !string.IsNullOrEmpty(config[paramName])) return;
-            Logger.LogError("{ErrorPrefix} '{ParamName}' not provided", errorPrefix, paramName);
+            Logger.LogError("{ErrorPrefix} '{ParamName}' is required but was not provided", errorPrefix, paramName);
             throw new MissingFieldException($"{errorPrefix} '{paramName}' not provided");
         }
         finally
@@ -492,7 +497,7 @@ public class AkeylessPam : IPAMProvider
     ///     Dictionary containing instance-specific parameters, including the secret name and field
     ///     name.
     /// </param>
-    /// <param name="connectionConfiguration">Dictionary containing connection and authentication parameters for.</param>
+    /// <param name="connectionConfiguration">Dictionary containing connection and authentication parameters for Akeyless.</param>
     /// <returns>A fully populated AkeylessConfiguration object.</returns>
     /// <exception cref="Exception">Thrown when required parameters are missing or invalid.</exception>
     private AkeylessConfiguration BuildAkeylessConfiguration(
@@ -502,13 +507,13 @@ public class AkeylessPam : IPAMProvider
         try
         {
             Logger.MethodEntry();
-            Logger.LogInformation("Validating Akeyless configuration");
+            Logger.LogDebug("Building and validating Akeyless configuration");
             var validServer = ValidateServerConfigurationParams(connectionConfiguration);
             var validInstance = ValidateInstanceParams(instanceParameters);
 
             if (!validServer || !validInstance)
             {
-                Logger.LogError("Akeyless PAM provider configuration is invalid");
+                Logger.LogError("Akeyless PAM provider configuration is invalid; see preceding log entries for details");
                 throw new InvalidClientConfigurationException(
                     "Akeyless configuration is invalid, please review server logs.");
             }
@@ -516,47 +521,53 @@ public class AkeylessPam : IPAMProvider
             if (!connectionConfiguration.TryGetValue(AkeylessConfiguration.AUTH_TYPE, out var authType))
             {
                 Logger.LogWarning(
-                    "\'{AuthType}\' parameter not provided defaulting to 'implicit' auth type which uses environment variables",
+                    "'{AuthType}' parameter not provided; defaulting to 'access_key'",
                     AkeylessConfiguration.AUTH_TYPE);
                 authType = "access_key";
             }
 
-            Logger.LogDebug("Building Akeyless configuration");
             var config = new AkeylessConfiguration
             {
                 Url = connectionConfiguration.GetValueOrDefault(AkeylessConfiguration.AKEYLESS_API_URL,
                     AkeylessConstants.DefaultAkeylessApiUrl),
                 AuthType = authType
             };
+            Logger.LogDebug("Using Akeyless URL '{Url}', auth type '{AuthType}'", config.Url, config.AuthType);
+
             switch (authType)
             {
                 case "implicit":
-                    Logger.LogInformation("Building Akeyless configuration for implicit auth type");
+                    Logger.LogDebug("Implicit auth type configured; credentials expected via environment variables");
                     break;
                 case "access_key":
-                    Logger.LogInformation("Building Akeyless configuration for 'access_key' auth type");
                     config.AccessId = connectionConfiguration[AkeylessConfiguration.ACCESS_ID];
                     config.AccessKey = connectionConfiguration[AkeylessConfiguration.ACCESS_KEY];
+                    // NOTE: AccessId logged (not secret), AccessKey intentionally omitted.
+                    Logger.LogDebug("Access key auth configured with AccessId '{AccessId}'", config.AccessId);
                     break;
                 default:
-                    Logger.LogError("Invalid auth type '{AuthType}' specified", authType);
+                    Logger.LogError("Unsupported auth type '{AuthType}' encountered during configuration build", authType);
                     throw new Exception($"Invalid grant type '{authType}' specified");
             }
 
             config.SecretType = instanceParameters.GetValueOrDefault(AkeylessConfiguration.SECRET_TYPE, "");
             config.SecretName = instanceParameters[AkeylessConfiguration.SECRET_NAME];
+            Logger.LogDebug("Configured to retrieve secret '{SecretName}' (type: '{SecretType}')",
+                config.SecretName, config.SecretType);
+
             switch (config.SecretType)
             {
                 case "static_kv":
-                    Logger.LogInformation("Configuring static secret field name for secret type '{SecretType}'",
-                        config.SecretType);
                     config.StaticSecretFieldName = instanceParameters[AkeylessConfiguration.STATIC_SECRET_FIELD_NAME];
+                    Logger.LogDebug("KV field name set to '{FieldName}'", config.StaticSecretFieldName);
                     break;
                 case "static_json":
-                    Logger.LogInformation("Configuring static secret field name for secret type '{SecretType}'",
-                        config.SecretType);
                     config.StaticSecretFieldName = instanceParameters.GetValueOrDefault(
                         AkeylessConfiguration.STATIC_SECRET_FIELD_NAME, "");
+                    if (!string.IsNullOrEmpty(config.StaticSecretFieldName))
+                        Logger.LogDebug("JSON field name set to '{FieldName}'", config.StaticSecretFieldName);
+                    else
+                        Logger.LogDebug("No JSON field name specified; full JSON blob will be returned");
                     break;
             }
 
@@ -570,6 +581,7 @@ public class AkeylessPam : IPAMProvider
                     $"Akeyless configuration validation failed: {errors}");
             }
 
+            Logger.LogDebug("Akeyless configuration built successfully");
             return config;
         }
         finally
