@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Keyfactor
+// Copyright 2025 Keyfactor
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 // Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS,
@@ -7,11 +7,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using akeyless.Api;
 using akeyless.Client;
-using akeyless.Model;
 using Keyfactor.Extensions.Pam.Akeyless.Models;
 using Keyfactor.Logging;
 using Keyfactor.Platform.Extensions;
@@ -70,9 +70,20 @@ public class InvalidSecretConfigurationException : Exception
 /// </remarks>
 public class AkeylessPam : IPAMProvider
 {
+    private readonly Func<string, IAkeylessApiClient> _clientFactory;
+
     private ILogger Logger { get; } = LogHandler.GetClassLogger<AkeylessPam>();
 
     private string AuthToken { get; set; } = string.Empty;
+
+    public AkeylessPam() : this(basePath => new AkeylessApiClient(basePath))
+    {
+    }
+
+    internal AkeylessPam(Func<string, IAkeylessApiClient> clientFactory)
+    {
+        _clientFactory = clientFactory;
+    }
 
     /// <summary>
     ///     Gets the name of this PAM provider.
@@ -113,47 +124,39 @@ public class AkeylessPam : IPAMProvider
         }
     }
 
-    private V2Api InitClient(AkeylessConfiguration configurationInfo)
+    private IAkeylessApiClient InitClient(AkeylessConfiguration configurationInfo)
     {
         try
         {
             Logger.MethodEntry();
-            var config = new Configuration
-            {
-                BasePath = Environment.GetEnvironmentVariable("AKEYLESS_API_URL") ??
-                           configurationInfo.Url ?? "https://api.akeyless.io"
-            };
+            var basePath = Environment.GetEnvironmentVariable("AKEYLESS_API_URL") ??
+                           configurationInfo.Url ?? "https://api.akeyless.io";
 
-            var api = new V2Api(config);
+            var client = _clientFactory(basePath);
+
             switch (configurationInfo.AuthType)
             {
                 case "access_key":
                     Logger.LogDebug("Authenticating with Akeyless using access_key");
-                    var authRequest = new Auth(
-                        configurationInfo.AccessId,
-                        configurationInfo.AccessKey
-                    );
-                    // Logger.LogTrace("Auth Request: {@AuthRequest}",
-                    //     authRequest); //TODO: COMMENT THIS OUT it exposes secrets
-                    var authResp = api.Auth(authRequest);
+                    var token = client.Authenticate(configurationInfo.AccessId, configurationInfo.AccessKey);
 
-                    if (string.IsNullOrEmpty(authResp.Token) && string.IsNullOrEmpty(authResp.Creds.Token))
+                    if (string.IsNullOrEmpty(token))
                     {
                         Logger.LogError("Unable to obtain access token from Akeyless server");
                         throw new InvalidTokenException("Unable to obtain access token from Akeyless server");
                     }
 
-                    AuthToken = string.IsNullOrEmpty(authResp.Token) ? authResp.Creds.Token : authResp.Token;
+                    AuthToken = token;
                     Logger.LogInformation("Successfully authenticated with Akeyless");
-
                     break;
+
                 default:
                     Logger.LogWarning("No authentication performed for auth type '{AuthType}'",
                         configurationInfo.AuthType);
                     break;
             }
 
-            return api;
+            return client;
         }
         catch (ApiException ex)
         {
@@ -239,20 +242,17 @@ public class AkeylessPam : IPAMProvider
         }
     }
 
-    private async Task<string> GetStaticSecret(V2Api client, AkeylessConfiguration configurationInfo)
+    private async Task<string> GetStaticSecret(IAkeylessApiClient client, AkeylessConfiguration configurationInfo)
     {
         try
         {
             Logger.MethodEntry();
             Logger.LogDebug("Fetching static text secret '{SecretName}'",
                 configurationInfo.SecretName);
-            var req = new GetSecretValue(
-                names: [configurationInfo.SecretName],
-                token: AuthToken
-            );
-            var secrets = await client.GetSecretValueAsync(req);
 
-            if (!secrets.TryGetValue(configurationInfo.SecretName, out var secretValue))
+            var secrets = await client.GetSecretValuesAsync([configurationInfo.SecretName], AuthToken);
+
+            if (!secrets.TryGetValue(configurationInfo.SecretName, out var secretValueStr))
             {
                 Logger.LogError("Secret '{SecretName}' not found in Akeyless",
                     configurationInfo.SecretName);
@@ -260,7 +260,6 @@ public class AkeylessPam : IPAMProvider
                     $"Secret '{configurationInfo.SecretName}' not found in Akeyless");
             }
 
-            var secretValueStr = secretValue.ToString() ?? string.Empty;
             if (string.IsNullOrEmpty(secretValueStr))
             {
                 Logger.LogError("Secret '{SecretName}' has an empty value",
@@ -559,6 +558,16 @@ public class AkeylessPam : IPAMProvider
                     config.StaticSecretFieldName = instanceParameters.GetValueOrDefault(
                         AkeylessConfiguration.STATIC_SECRET_FIELD_NAME, "");
                     break;
+            }
+
+            var validationContext = new ValidationContext(config);
+            var validationResults = new List<ValidationResult>();
+            if (!Validator.TryValidateObject(config, validationContext, validationResults, validateAllProperties: true))
+            {
+                var errors = string.Join("; ", validationResults.Select(r => r.ErrorMessage));
+                Logger.LogError("Akeyless configuration model validation failed: {Errors}", errors);
+                throw new InvalidClientConfigurationException(
+                    $"Akeyless configuration validation failed: {errors}");
             }
 
             return config;

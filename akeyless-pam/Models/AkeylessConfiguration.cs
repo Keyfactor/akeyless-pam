@@ -179,16 +179,11 @@ internal class AkeylessConfiguration : IValidatableObject
                 $"Unsupported SecretType. Supported types are: {string.Join(", ", SupportedSecretTypes)}.",
                 [nameof(SecretType)]
             );
-        switch (SecretType)
-        {
-            case "static_kv":
-            case "static_json":
-                if (string.IsNullOrWhiteSpace(StaticSecretFieldName))
-                    yield return new ValidationResult(
-                        "StaticSecretFieldName must be provided when SecretType is 'static_kv|static_json'.",
-                        [nameof(StaticSecretFieldName)]
-                    );
-                break;
-        }
+        // StaticSecretFieldName is required for static_kv, optional for static_json
+        if (SecretType == "static_kv" && string.IsNullOrWhiteSpace(StaticSecretFieldName))
+            yield return new ValidationResult(
+                "StaticSecretFieldName must be provided when SecretType is 'static_kv'.",
+                [nameof(StaticSecretFieldName)]
+            );
     }
 }
