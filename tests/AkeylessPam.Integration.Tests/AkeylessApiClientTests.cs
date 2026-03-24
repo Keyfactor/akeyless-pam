@@ -31,8 +31,14 @@ public class AkeylessApiClientTests
     private static string AccessKey =>
         Environment.GetEnvironmentVariable("AKEYLESS_ACCESS_KEY") ?? string.Empty;
 
-    private static string ApiUrl =>
-        Environment.GetEnvironmentVariable("AKEYLESS_API_URL") ?? "https://api.akeyless.io";
+    private static string ApiUrl
+    {
+        get
+        {
+            var url = Environment.GetEnvironmentVariable("AKEYLESS_API_URL");
+            return string.IsNullOrEmpty(url) ? "https://api.akeyless.io" : url;
+        }
+    }
 
     private static AkeylessApiClient Client => new(ApiUrl);
 
@@ -40,6 +46,12 @@ public class AkeylessApiClientTests
     {
         Skip.If(string.IsNullOrEmpty(AccessId) || string.IsNullOrEmpty(AccessKey),
             "AKEYLESS_ACCESS_ID and AKEYLESS_ACCESS_KEY not set; skipping API client integration tests.");
+    }
+
+    private static string RequireSecretPath(string envVar, string defaultPath)
+    {
+        var val = Environment.GetEnvironmentVariable(envVar);
+        return string.IsNullOrEmpty(val) ? defaultPath : val;
     }
 
     // ── Authentication ──────────────────────────────────────────────────────
@@ -70,8 +82,7 @@ public class AkeylessApiClientTests
     public async Task GetSecretValuesAsync_StaticTextSecret_ReturnsDictWithValue()
     {
         SkipIfMissingCredentials();
-        var secretName = Environment.GetEnvironmentVariable("AKEYLESS_SECRET_STATIC_TEXT")
-                         ?? "pam/test/pamStaticTextUsername";
+        var secretName = RequireSecretPath("AKEYLESS_SECRET_STATIC_TEXT", "pam/test/pamStaticTextUsername");
 
         var client = Client;
         var token = client.Authenticate(AccessId, AccessKey);
@@ -85,8 +96,7 @@ public class AkeylessApiClientTests
     public async Task GetSecretValuesAsync_StaticKvSecret_ReturnsDictWithValue()
     {
         SkipIfMissingCredentials();
-        var secretName = Environment.GetEnvironmentVariable("AKEYLESS_SECRET_STATIC_KV")
-                         ?? "pam/test/pamStaticKV";
+        var secretName = RequireSecretPath("AKEYLESS_SECRET_STATIC_KV", "pam/test/pamStaticKV");
 
         var client = Client;
         var token = client.Authenticate(AccessId, AccessKey);
@@ -100,8 +110,7 @@ public class AkeylessApiClientTests
     public async Task GetSecretValuesAsync_StaticJsonSecret_ReturnsDictWithValue()
     {
         SkipIfMissingCredentials();
-        var secretName = Environment.GetEnvironmentVariable("AKEYLESS_SECRET_STATIC_JSON")
-                         ?? "pam/test/pamStaticJSON";
+        var secretName = RequireSecretPath("AKEYLESS_SECRET_STATIC_JSON", "pam/test/pamStaticJSON");
 
         var client = Client;
         var token = client.Authenticate(AccessId, AccessKey);
@@ -115,10 +124,8 @@ public class AkeylessApiClientTests
     public async Task GetSecretValuesAsync_MultipleSecrets_ReturnsAllRequested()
     {
         SkipIfMissingCredentials();
-        var secret1 = Environment.GetEnvironmentVariable("AKEYLESS_SECRET_STATIC_TEXT")
-                      ?? "pam/test/pamStaticTextUsername";
-        var secret2 = Environment.GetEnvironmentVariable("AKEYLESS_SECRET_STATIC_TEXT_2")
-                      ?? "pam/test/pamStaticTextPassword";
+        var secret1 = RequireSecretPath("AKEYLESS_SECRET_STATIC_TEXT", "pam/test/pamStaticTextUsername");
+        var secret2 = RequireSecretPath("AKEYLESS_SECRET_STATIC_TEXT_2", "pam/test/pamStaticTextPassword");
 
         var client = Client;
         var token = client.Authenticate(AccessId, AccessKey);
