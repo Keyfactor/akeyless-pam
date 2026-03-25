@@ -144,4 +144,25 @@ public class AkeylessApiClientTests
         await Assert.ThrowsAsync<ApiException>(() =>
             client.GetSecretValuesAsync(["pam/test/any"], "invalid-token"));
     }
+
+    // ── Debug ─────────────────────────────────────────────────────────────────
+
+    [SkippableFact]
+    public async Task Debug_K8sOrchestratorSecret_PrintsRawValue()
+    {
+        SkipIfMissingCredentials();
+        const string secretName = "/pam/test/k8s-orchestrator";
+
+        var client = Client;
+        var token = client.Authenticate(AccessId, AccessKey);
+        var result = await client.GetSecretValuesAsync([secretName], token);
+
+        Console.WriteLine($"Keys in response: [{string.Join(", ", result.Keys)}]");
+        if (result.TryGetValue(secretName, out var value))
+            Console.WriteLine($"Raw value:\n{value}");
+        else
+            Console.WriteLine("Secret key not found in response.");
+
+        Assert.True(result.ContainsKey(secretName), $"Response did not contain key '{secretName}'");
+    }
 }

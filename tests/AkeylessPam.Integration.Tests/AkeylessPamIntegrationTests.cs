@@ -220,4 +220,36 @@ public class AkeylessPamIntegrationTests
         // are acceptable here until the adapter normalizes SDK errors into domain exceptions.
         Assert.ThrowsAny<Exception>(() => pam.GetPassword(instance, BuildServerParams()));
     }
+
+    [SkippableFact]
+    public void GetPassword_StaticJson_NoFieldName_ReturnsRawJsonBlob_K8sOrchestratorSecret()
+    {
+        SkipIfMissingCredentials();
+        const string secretName = "/pam/test/k8s-orchestrator";
+
+        var pam = new AkeylessPam();
+        var result = pam.GetPassword(
+            new Dictionary<string, string> { ["SecretType"] = "static_json", ["SecretName"] = secretName },
+            BuildServerParams());
+
+        Assert.NotEmpty(result);
+        Assert.True(result.TrimStart().StartsWith('{') || result.TrimStart().StartsWith('['),
+            "Expected raw JSON blob");
+    }
+
+    [SkippableFact]
+    public void GetPassword_StaticJson_WhitespaceFieldName_ReturnsRawJsonBlob_K8sOrchestratorSecret()
+    {
+        SkipIfMissingCredentials();
+        const string secretName = "/pam/test/k8s-orchestrator";
+
+        var pam = new AkeylessPam();
+        var result = pam.GetPassword(
+            new Dictionary<string, string> { ["SecretType"] = "static_json", ["SecretName"] = secretName, ["StaticSecretFieldName"] = "   " },
+            BuildServerParams());
+
+        Assert.NotEmpty(result);
+        Assert.True(result.TrimStart().StartsWith('{') || result.TrimStart().StartsWith('['),
+            "Expected raw JSON blob even when StaticSecretFieldName is whitespace-only");
+    }
 }
