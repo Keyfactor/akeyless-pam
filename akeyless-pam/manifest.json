@@ -3,7 +3,7 @@
     "Keyfactor.Platform.Extensions.IPAMProvider": {
       "PAMProviders.Akeyless.PAMProvider": {
         "assemblyPath": "akeyless-pam.dll",
-        "TypeFullName": "Keyfactor.Extensions.Pam.Akeyless.Pam"
+        "TypeFullName": "Keyfactor.Extensions.Pam.Akeyless.AkeylessPam"
       }
     }
   },
