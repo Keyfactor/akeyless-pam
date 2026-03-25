@@ -77,6 +77,8 @@ A static secret whose value is a JSON object. The provider can return either the
 - If `StaticSecretFieldName` is **omitted**, the full JSON string is returned.
 - If `StaticSecretFieldName` is **provided**, only the value of that field is returned.
 
+> **Note:** The Keyfactor Command portal may display `StaticSecretFieldName` as a required field. If you want the full JSON blob returned (no field extraction), enter a single space (` `) in the field — the provider treats whitespace-only values as empty.
+
 **Example secret value in Akeyless:**
 ```json
 {
