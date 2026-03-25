@@ -9,6 +9,16 @@ The test suite is split into two projects under `tests/`:
 
 ### Running Tests
 
+A `Makefile` at the repo root provides shortcuts for common tasks:
+
+```shell
+make test-unit         # unit tests only
+make test-integration  # integration tests only
+make test              # both test projects
+```
+
+Or use `dotnet` directly:
+
 ```shell
 # Unit tests only
 dotnet test tests/AkeylessPam.Unit.Tests/

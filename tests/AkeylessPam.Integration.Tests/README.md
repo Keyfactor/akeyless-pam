@@ -5,6 +5,10 @@ Integration tests for the Akeyless PAM Provider that connect to a live Akeyless 
 ## Running
 
 ```shell
+# Via Makefile
+make test-integration
+
+# Or directly
 dotnet test tests/AkeylessPam.Integration.Tests/
 ```
 
@@ -40,6 +44,8 @@ End-to-end tests for `AkeylessPam.GetPassword()` against a live Akeyless instanc
 | `GetPassword_StaticJson_NoFieldName_ReturnsRawJsonBlob` | credentials + `AKEYLESS_SECRET_STATIC_JSON_RAW` | Retrieves a `static_json` secret without specifying a field, asserts result is a JSON object or array |
 | `GetPassword_BadCredentials_ThrowsInvalidClientConfigurationException` | `AKEYLESS_SECRET_STATIC_TEXT` (no credentials needed) | Intentionally uses invalid credentials and asserts `InvalidClientConfigurationException` is thrown |
 | `GetPassword_NonexistentSecret_ThrowsException` | credentials | Requests a secret path that does not exist and asserts an exception is thrown |
+| `GetPassword_StaticJson_NoFieldName_ReturnsRawJsonBlob_K8sOrchestratorSecret` | credentials | Retrieves `/pam/test/k8s-orchestrator` as `static_json` with no field name and asserts the full JSON blob is returned |
+| `GetPassword_StaticJson_WhitespaceFieldName_ReturnsRawJsonBlob_K8sOrchestratorSecret` | credentials | Same as above but passes a whitespace-only `StaticSecretFieldName` (simulating the Keyfactor Command portal behavior); asserts the full JSON blob is returned |
 
 ---
 

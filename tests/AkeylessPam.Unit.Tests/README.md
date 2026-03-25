@@ -5,6 +5,10 @@ Unit tests for the Akeyless PAM Provider. Tests run entirely in-process with no 
 ## Running
 
 ```shell
+# Via Makefile
+make test-unit
+
+# Or directly
 dotnet test tests/AkeylessPam.Unit.Tests/
 ```
 
@@ -46,6 +50,7 @@ Tests for `AkeylessPam.GetPassword()` covering configuration validation, authent
 | `GetPassword_StaticJson_MissingField_ThrowsInvalidSecretConfigurationException` | Throws `InvalidSecretConfigurationException` when `StaticSecretFieldName` is not present in the JSON |
 | `GetPassword_SecretNotInResponse_ThrowsInvalidSecretConfigurationException` | Throws `InvalidSecretConfigurationException` when the API returns an empty dictionary (secret not found) |
 | `GetPassword_EmptySecretValue_ThrowsInvalidSecretConfigurationException` | Throws `InvalidSecretConfigurationException` when the API returns an empty string for the secret value |
+| `GetPassword_StaticJson_WhitespaceFieldName_ReturnsFullBlob` | A `static_json` secret with a whitespace-only `StaticSecretFieldName` (e.g. a space from the Command UI) returns the full JSON blob |
 | `GetPassword_StaticKv_JsonStoredAsKv_ParsesViaJson` | When a `static_kv` secret contains JSON instead of `key=value` lines, falls back to JSON parsing |
 
 ---
