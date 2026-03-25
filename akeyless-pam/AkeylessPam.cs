@@ -570,12 +570,12 @@ public class AkeylessPam : IPAMProvider
             switch (config.SecretType)
             {
                 case "static_kv":
-                    config.StaticSecretFieldName = instanceParameters[AkeylessConfiguration.STATIC_SECRET_FIELD_NAME];
+                    config.StaticSecretFieldName = instanceParameters[AkeylessConfiguration.STATIC_SECRET_FIELD_NAME].Trim();
                     Logger.LogDebug("KV field name set to '{FieldName}'", config.StaticSecretFieldName);
                     break;
                 case "static_json":
                     config.StaticSecretFieldName = instanceParameters.GetValueOrDefault(
-                        AkeylessConfiguration.STATIC_SECRET_FIELD_NAME, "");
+                        AkeylessConfiguration.STATIC_SECRET_FIELD_NAME, "").Trim();
                     if (!string.IsNullOrEmpty(config.StaticSecretFieldName))
                         Logger.LogDebug("JSON field name set to '{FieldName}'", config.StaticSecretFieldName);
                     else

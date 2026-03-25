@@ -279,6 +279,20 @@ public class SecretRetrievalTests
     }
 
     [Fact]
+    public void GetPassword_StaticJson_WhitespaceFieldName_ReturnsFullBlob()
+    {
+        // Command UI may send whitespace instead of empty string — should be treated as no field name
+        const string json = "{\"username\":\"admin\",\"password\":\"s3cr3t\"}";
+        var pam = PamWithMockReturning("pam/test/secret", json);
+
+        var result = pam.GetPassword(
+            Params.Instance(secretType: "static_json", fieldName: "   "),
+            Params.ValidServer());
+
+        Assert.Equal(json, result);
+    }
+
+    [Fact]
     public void GetPassword_StaticKv_JsonStoredAsKv_ParsesViaJson()
     {
         // When SecretType is static_kv but content is JSON, ParseJsonSecret is used
