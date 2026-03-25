@@ -1,8 +1,10 @@
-SLN     := akeyless-pam.sln
-LIB     := akeyless-pam/akeyless-pam.csproj
-UNIT    := tests/AkeylessPam.Unit.Tests/AkeylessPam.Unit.Tests.csproj
-INT     := tests/AkeylessPam.Integration.Tests/AkeylessPam.Integration.Tests.csproj
-CONSOLE := TestConsole/TestConsole.csproj
+SLN      := akeyless-pam.sln
+LIB      := akeyless-pam/akeyless-pam.csproj
+UNIT     := tests/AkeylessPam.Unit.Tests/AkeylessPam.Unit.Tests.csproj
+INT      := tests/AkeylessPam.Integration.Tests/AkeylessPam.Integration.Tests.csproj
+CONSOLE  := TestConsole/TestConsole.csproj
+MANIFEST := akeyless-pam/manifest.json
+LIB_BIN  := akeyless-pam/bin
 
 .PHONY: all build build-release clean test test-unit test-integration console restore
 
@@ -11,10 +13,12 @@ all: build
 ## Build (debug)
 build:
 	dotnet build $(LIB)
+	@for d in $(LIB_BIN)/Debug/net*/; do cp $(MANIFEST) $$d; done
 
 ## Build (release)
 build-release:
 	dotnet build $(LIB) -c Release
+	@for d in $(LIB_BIN)/Release/net*/; do cp $(MANIFEST) $$d; done
 
 ## Restore NuGet packages
 restore:
