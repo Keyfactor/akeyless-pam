@@ -354,3 +354,6 @@ MigrationBackup/
 .idea/*
 
 manifest.json
+
+.claude/*
+CLAUDE.md
