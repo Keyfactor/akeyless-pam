@@ -47,6 +47,70 @@ For full details on static secrets, see the [Akeyless documentation](https://doc
 | `static_json` | A static secret containing JSON; a specific field can optionally be extracted        | *Optional*: `StaticSecretFieldName`. Use this to parse a specific field value from a JSON secret, else the full JSON blob will be returned |
 | `static_kv`   | A static secret containing key-value pairs; a specific field is extracted by name    | *Required*: `StaticSecretFieldName`. Use this to parse a specific field value from a key-value secret. For example `password`.             |
 
+---
+
+#### `static_text`
+
+A static secret whose entire value is a plain string. The value is returned as-is with no parsing.
+
+**Example secret value in Akeyless:**
+```
+s3cr3tP@ssword!
+```
+
+**Example instance parameter configuration:**
+
+| Parameter | Value |
+|-----------|-------|
+| `SecretName` | `/my-org/my-app/db-password` |
+| `SecretType` | `static_text` |
+
+---
+
+#### `static_json`
+
+A static secret whose value is a JSON object. The provider can return either the full JSON blob or a single extracted field.
+
+- If `StaticSecretFieldName` is **omitted**, the full JSON string is returned.
+- If `StaticSecretFieldName` is **provided**, only the value of that field is returned.
+
+**Example secret value in Akeyless:**
+```json
+{
+  "username": "db_user",
+  "password": "s3cr3tP@ssword!"
+}
+```
+
+**Example instance parameter configuration (extract a single field):**
+
+| Parameter | Value |
+|-----------|-------|
+| `SecretName` | `/my-org/my-app/db-credentials` |
+| `SecretType` | `static_json` |
+| `StaticSecretFieldName` | `password` |
+
+---
+
+#### `static_kv`
+
+A static secret whose value is a set of key-value pairs, one per line in `key=value` format. A specific field must be named via `StaticSecretFieldName`.
+
+**Example secret value in Akeyless:**
+```
+username=db_user
+password=s3cr3tP@ssword!
+host=db.example.com
+```
+
+**Example instance parameter configuration:**
+
+| Parameter | Value |
+|-----------|-------|
+| `SecretName` | `/my-org/my-app/db-credentials` |
+| `SecretType` | `static_kv` |
+| `StaticSecretFieldName` | `password` |
+
 
 ## Mechanics
 
