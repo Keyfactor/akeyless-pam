@@ -122,8 +122,9 @@ public class AkeylessPam : IPAMProvider
         {
             Logger.MethodEntry();
             Logger.LogDebug("Akeyless PAM Provider invoked");
-            // NOTE: serverConfigurationParameters intentionally not logged — contains AccessId/AccessKey.
-            Logger.LogTrace("instanceParameters: {@InstanceParameters}", instanceParameters);
+            // NOTE: Neither parameter dictionary is logged here — serverConfigurationParameters contains
+            // AccessId/AccessKey, and instanceParameters may gain credential-bearing keys in future versions.
+            Logger.LogTrace("instanceParameters keys: [{Keys}]", string.Join(", ", instanceParameters.Keys));
 
             var config = BuildAkeylessConfiguration(instanceParameters, serverConfigurationParameters);
             return GetAkeylessSecretAsync(config).Result;
@@ -176,9 +177,11 @@ public class AkeylessPam : IPAMProvider
         }
         catch (ApiException ex)
         {
-            Logger.LogError(ex, "Akeyless API exception during authentication");
+            // NOTE: ex.Message is intentionally excluded — ApiException error content may echo back
+            // portions of the auth request body, including credentials.
+            Logger.LogError(ex, "Akeyless API exception during authentication (HTTP {StatusCode})", ex.ErrorCode);
             throw new InvalidClientConfigurationException(
-                $"Unable to authenticate to Akeyless API. {ex.Message}");
+                $"Unable to authenticate to Akeyless API (HTTP {ex.ErrorCode}). Check AccessId and AccessKey configuration.");
         }
         finally
         {

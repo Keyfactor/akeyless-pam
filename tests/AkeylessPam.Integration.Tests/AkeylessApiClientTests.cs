@@ -157,11 +157,7 @@ public class AkeylessApiClientTests
         var token = client.Authenticate(AccessId, AccessKey);
         var result = await client.GetSecretValuesAsync([secretName], token);
 
-        Console.WriteLine($"Keys in response: [{string.Join(", ", result.Keys)}]");
-        if (result.TryGetValue(secretName, out var value))
-            Console.WriteLine($"Raw value:\n{value}");
-        else
-            Console.WriteLine("Secret key not found in response.");
+        // NOTE: secret value is intentionally not written to Console/output to prevent secret exposure in CI logs.
 
         Assert.True(result.ContainsKey(secretName), $"Response did not contain key '{secretName}'");
     }

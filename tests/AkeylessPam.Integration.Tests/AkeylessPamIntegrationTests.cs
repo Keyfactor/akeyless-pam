@@ -176,8 +176,9 @@ public class AkeylessPamIntegrationTests
 
         Assert.NotNull(result);
         Assert.NotEmpty(result);
+        // NOTE: result value is intentionally excluded from the assertion message to prevent secret exposure.
         Assert.True(result.TrimStart().StartsWith('{') || result.TrimStart().StartsWith('['),
-            "Expected raw JSON blob but got: " + result);
+            "Expected raw JSON blob but result did not start with '{' or '['");
     }
 
     [SkippableFact]
