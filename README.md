@@ -5,9 +5,9 @@
 <p align="center">
   <!-- Badges -->
 <img src="https://img.shields.io/badge/integration_status-production-3D1973?style=flat-square" alt="Integration Status: production" />
-<a href="https://github.com/Keyfactor/delinea-secretserver-pam/releases"><img src="https://img.shields.io/github/v/release/Keyfactor/delinea-secretserver-pam?style=flat-square" alt="Release" /></a>
-<img src="https://img.shields.io/github/issues/Keyfactor/delinea-secretserver-pam?style=flat-square" alt="Issues" />
-<img src="https://img.shields.io/github/downloads/Keyfactor/delinea-secretserver-pam/total?style=flat-square&label=downloads&color=28B905" alt="GitHub Downloads (all assets, all releases)" />
+<a href="https://github.com/Keyfactor/akeyless-pam/releases"><img src="https://img.shields.io/github/v/release/Keyfactor/akeyless-pam?style=flat-square" alt="Release" /></a>
+<img src="https://img.shields.io/github/issues/Keyfactor/akeyless-pam?style=flat-square" alt="Issues" />
+<img src="https://img.shields.io/github/downloads/Keyfactor/akeyless-pam/total?style=flat-square&label=downloads&color=28B905" alt="GitHub Downloads (all assets, all releases)" />
 </p>
 
 <p align="center">
@@ -72,7 +72,7 @@ Create the required PAM Types in the connected Command platform.
 
 ```shell
 # Akeyless
-kfutil pam types-create -r delinea-secretserver-pam -n Akeyless
+kfutil pam types-create -r akeyless-pam -n Akeyless
 ```
 
 ##### Using the API
@@ -148,9 +148,9 @@ Below is the payload to `POST` to the Keyfactor Command API
 
     1. Copy the unzipped assemblies to each of the following directories:
 
-        * `C:\Program Files\Keyfactor\Keyfactor Platform\WebAgentServices\Extensions\delinea-secretserver-pam`
-        * `C:\Program Files\Keyfactor\Keyfactor Platform\WebConsole\Extensions\delinea-secretserver-pam`
-        * `C:\Program Files\Keyfactor\Keyfactor Platform\KeyfactorAPI\Extensions\delinea-secretserver-pam`
+        * `C:\Program Files\Keyfactor\Keyfactor Platform\WebAgentServices\Extensions\akeyless-pam`
+        * `C:\Program Files\Keyfactor\Keyfactor Platform\WebConsole\Extensions\akeyless-pam`
+        * `C:\Program Files\Keyfactor\Keyfactor Platform\KeyfactorAPI\Extensions\akeyless-pam`
 
     </details>
 
@@ -158,10 +158,10 @@ Below is the payload to `POST` to the Keyfactor Command API
 
     1. Copy the assemblies to each of the following directories:
     
-        * `C:\Program Files\Keyfactor\Keyfactor Platform\WebAgentServices\bin\delinea-secretserver-pam`
-        * `C:\Program Files\Keyfactor\Keyfactor Platform\KeyfactorAPI\bin\delinea-secretserver-pam`
-        * `C:\Program Files\Keyfactor\Keyfactor Platform\WebConsole\bin\delinea-secretserver-pam`
-        * `C:\Program Files\Keyfactor\Keyfactor Platform\Service\delinea-secretserver-pam`
+        * `C:\Program Files\Keyfactor\Keyfactor Platform\WebAgentServices\bin\akeyless-pam`
+        * `C:\Program Files\Keyfactor\Keyfactor Platform\KeyfactorAPI\bin\akeyless-pam`
+        * `C:\Program Files\Keyfactor\Keyfactor Platform\WebConsole\bin\akeyless-pam`
+        * `C:\Program Files\Keyfactor\Keyfactor Platform\Service\akeyless-pam`
 
     2. Open a text editor on the Keyfactor Command server as an administrator and open the `web.config` file located in the `WebAgentServices` directory.
 
@@ -200,16 +200,16 @@ Below is the payload to `POST` to the Keyfactor Command API
 
         ```shell
         # Windows Server
-        kfutil orchestrator extension -e delinea-secretserver-pam@latest --out "C:\Program Files\Keyfactor\Keyfactor Orchestrator\extensions"
+        kfutil orchestrator extension -e akeyless-pam@latest --out "C:\Program Files\Keyfactor\Keyfactor Orchestrator\extensions"
 
         # Linux
-        kfutil orchestrator extension -e delinea-secretserver-pam@latest --out "/opt/keyfactor/orchestrator/extensions"
+        kfutil orchestrator extension -e akeyless-pam@latest --out "/opt/keyfactor/orchestrator/extensions"
         ```
 
     * **Manually**: Download the latest release of the Akeyless PAM Provider from the [Releases](../../releases) page. Extract the contents of the archive to:
 
-        * **Windows Server**: `C:\Program Files\Keyfactor\Keyfactor Orchestrator\extensions\delinea-secretserver-pam`
-        * **Linux**: `/opt/keyfactor/orchestrator/extensions/delinea-secretserver-pam`
+        * **Windows Server**: `C:\Program Files\Keyfactor\Keyfactor Orchestrator\extensions\akeyless-pam`
+        * **Linux**: `/opt/keyfactor/orchestrator/extensions/akeyless-pam`
 
 2. Included in the release is a `manifest.json` file that contains the following object:
     ```json
@@ -249,7 +249,7 @@ Below is the payload to `POST` to the Keyfactor Command API
 
 
 ##### Define a PAM provider in Command
-1. In the Keyfactor Command Portal, hover over the ⚙️  (settings) icon in the top right corner of the screen and select **Privileged Access Management**.
+1. In the Keyfactor Command Portal, hover over the ⚙️  (settings) icon in the top right corner of the screen and select **Priviledged Access Management**.
 
 2. Select the **Add** button to create a new PAM provider. Click the dropdown for **Provider Type** and select **Akeyless**.
 
@@ -294,7 +294,7 @@ Select the **Load From PAM Provider** tab, choose the **Akeyless** provider from
 
 In Command 11 and greater, before using the Akeyless PAM type, you must define a Remote PAM Provider in the Command portal.
 
-1. In the Keyfactor Command Portal, hover over the ⚙️  (settings) icon in the top right corner of the screen and select **Privileged Access Management**.
+1. In the Keyfactor Command Portal, hover over the ⚙️  (settings) icon in the top right corner of the screen and select **Priviledged Access Management**.
 
 2. Select the **Add** button to create a new PAM provider.
 
