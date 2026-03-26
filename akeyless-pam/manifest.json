@@ -1,0 +1,16 @@
+{
+  "extensions": {
+    "Keyfactor.Platform.Extensions.IPAMProvider": {
+      "PAMProviders.Akeyless.PAMProvider": {
+        "assemblyPath": "akeyless-pam.dll",
+        "TypeFullName": "Keyfactor.Extensions.Pam.Akeyless.AkeylessPam"
+      }
+    }
+  },
+  "Keyfactor:PAMProviders:Akeyless-:InitializationInfo": {
+    "Url": "https://api.akeyless.io",
+    "AuthType": "access_key",
+    "AccessId": "<ACCESS_ID>",
+    "AccessKey": "<ACCESS_KEY>"
+  }
+}
