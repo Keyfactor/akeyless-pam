@@ -352,3 +352,8 @@ MigrationBackup/
 *.env
 
 .idea/*
+
+manifest.json
+
+.claude/*
+CLAUDE.md
