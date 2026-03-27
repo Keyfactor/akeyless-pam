@@ -8,11 +8,8 @@ these authentication methods, see the [Akeyless documentation](https://docs.akey
 
 - Akeyless credentials w/ permission to access the secret(s) being used. See the [Akeyless documentation](https://docs.akeyless.io/reference/auth) for more information on how to configure the different types of auth.
 
-The Akeyless PAM Provider allows for the retrieval of stored account credentials from an Akeyless secret.
-Below you will find a list of supported [auth methods](#supported-authentication-methods) and [secret types](#supported-secret-types) for this provider. For more information on
-these authentication methods, see the [Akeyless documentation](https://docs.akeyless.io/reference/auth)
 
-- Akeyless credentials w/ permission to access the secret(s) being used. See the [Akeyless documentation](https://docs.akeyless.io/reference/auth) for more information on how to configure the different types of auth.
+
 
 ## Supported Authentication Methods
 
@@ -163,4 +160,3 @@ akeyless get-secret-value --name /my-org/my-app/db-password --token <TOKEN>
 The full service account setup can be scripted using the Akeyless CLI. The `create-auth-method-api-key` command returns the Access ID and Access Key you'll need for the Keyfactor configuration.
 
 ```shell
-
