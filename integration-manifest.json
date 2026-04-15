@@ -27,8 +27,8 @@
               "InstanceLevel": false
             },
             {
-              "Name": "AccessKeyId",
-              "DisplayName": "Access Key ID",
+              "Name": "AccessId",
+              "DisplayName": "Access ID",
               "Description": "The access key ID used to authenticate to Akeyless using `access_key` authentication.",
               "DataType": 2,
               "InstanceLevel": false
