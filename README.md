@@ -91,8 +91,8 @@ Below is the payload to `POST` to the Keyfactor Command API
             "InstanceLevel": false
         },
         {
-            "Name": "AccessKeyId",
-            "DisplayName": "Access Key ID",
+            "Name": "AccessId",
+            "DisplayName": "Access ID",
             "Description": "The access key ID used to authenticate to Akeyless using `access_key` authentication.",
             "DataType": 2,
             "InstanceLevel": false
@@ -261,7 +261,7 @@ Below is the payload to `POST` to the Keyfactor Command API
 | Initialization parameter | Display Name | Description |
 | --- | --- | --- |
 | Url | Akeyless URL | The URL to the Akeyless instance. Defaults to: https://api.akeyless.io |
-| AccessKeyId | Access Key ID | The access key ID used to authenticate to Akeyless using `access_key` authentication. |
+| AccessId | Access ID | The access key ID used to authenticate to Akeyless using `access_key` authentication. |
 | AccessKey | Access Key | The access key used to authenticate to Akeyless using `access_key` authentication. |
 | AuthType | Auth Type | The auth type used to authenticate to the Akeyless platform. Supported types are `access_key`. |
 
