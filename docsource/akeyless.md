@@ -8,6 +8,22 @@ these authentication methods, see the [Akeyless documentation](https://docs.akey
 
 - Akeyless credentials w/ permission to access the secret(s) being used. See the [Akeyless documentation](https://docs.akeyless.io/reference/auth) for more information on how to configure the different types of auth.
 
+## Configuration
+
+Connection and authentication parameters can be set in two ways:
+
+1. **`manifest.json`/Command portal parameters** — set via the `manifest.json` `InitializationInfo` block (Universal Orchestrator installs) or the corresponding fields in the Command portal PAM provider configuration (Command host installs). This is the standard way to configure the provider.
+2. **Environment variables** — if set on the host process running the PAM provider (the Keyfactor Command server for local installs, or the Universal Orchestrator host for remote installs), these override whatever value is configured via `manifest.json` or the Command portal. This is useful when connection details need to be controlled at the infrastructure/deployment level rather than baked into provider configuration — for example, pointing different environments (dev/stage/prod) at different Akeyless instances or credentials without changing `manifest.json` or Command PAM provider settings.
+
+| Environment Variable | Overrides | Falls Back To |
+|---|---|---|
+| `AKEYLESS_API_URL` | `Url` | configured `Url` initialization parameter, then default (`https://api.akeyless.io`) |
+| `AKEYLESS_AUTH_TYPE` | `AuthType` | configured `AuthType` initialization parameter |
+| `AKEYLESS_ACCESS_ID` | `AccessId` | configured `AccessId` initialization parameter |
+| `AKEYLESS_ACCESS_KEY` | `AccessKey` | configured `AccessKey` initialization parameter |
+
+Precedence for each: environment variable (if set to a non-empty value) > configured initialization parameter > default (`Url` only). An environment variable that is unset, or explicitly set to an empty string, is treated as "not overriding" and falls through to the configured value.
+
 ## Supported Authentication Methods
 
 ### Access Key (API Key) Authentication
