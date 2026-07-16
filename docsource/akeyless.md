@@ -114,7 +114,7 @@ host=db.example.com
 | `StaticSecretFieldName` | `password` |
 
 
-## Mechanics
+## Extension Mechanics
 
 When configuring Akeyless for use as a PAM Provider with Keyfactor, you will need to ensure that your
 instance is configured for API access using the desired auth method. This can be done by an Akeyless administrator.
