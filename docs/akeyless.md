@@ -8,8 +8,11 @@ these authentication methods, see the [Akeyless documentation](https://docs.akey
 
 - Akeyless credentials w/ permission to access the secret(s) being used. See the [Akeyless documentation](https://docs.akeyless.io/reference/auth) for more information on how to configure the different types of auth.
 
+The Akeyless PAM Provider allows for the retrieval of stored account credentials from an Akeyless secret.
+Below you will find a list of supported [auth methods](#supported-authentication-methods) and [secret types](#supported-secret-types) for this provider. For more information on
+these authentication methods, see the [Akeyless documentation](https://docs.akeyless.io/reference/auth)
 
-
+- Akeyless credentials w/ permission to access the secret(s) being used. See the [Akeyless documentation](https://docs.akeyless.io/reference/auth) for more information on how to configure the different types of auth.
 
 ## Supported Authentication Methods
 
@@ -160,3 +163,62 @@ akeyless get-secret-value --name /my-org/my-app/db-password --token <TOKEN>
 The full service account setup can be scripted using the Akeyless CLI. The `create-auth-method-api-key` command returns the Access ID and Access Key you'll need for the Keyfactor configuration.
 
 ```shell
+# 1. Create the API Key auth method
+#    The response includes the Access ID and Access Key — save these.
+akeyless create-auth-method-api-key --name /keyfactor/pam-auth-method
+
+# 2. Create an access role
+akeyless create-role --name keyfactor-pam
+
+# 3. Associate the auth method with the role
+akeyless assoc-role-auth-method \
+  --role-name keyfactor-pam \
+  --am-name /keyfactor/pam-auth-method
+
+# 4. Grant the role read access to a secret path (wildcards supported)
+akeyless set-role-rule \
+  --role-name keyfactor-pam \
+  --path "/my-org/my-app/*" \
+  --capability read
+```
+
+After adding and sharing a secret, you can use the secret's name (the "Secret name") to retrieve credentials from Akeyless as a PAM Provider.
+
+### Running the PAM provider on Keyfactor Universal Orchestrator (UO)
+
+When installing on the Universal Orchestrator (UO), the PAM provider is installed on and run from the UO host. Below is a sequence diagram
+showing the flow of the PAM provider when it is run from the UO.
+
+```mermaid
+sequenceDiagram
+    KeyfactorCommand->>KeyfactorCommand: New job created.
+    UO->>KeyfactorCommand: Hello do you have any jobs for me?
+    KeyfactorCommand->>UO: Yes here's a job.
+    UO->>Akeyless: Hello here are my client credentials.
+    Akeyless->>UO: Here's your API token.
+    UO->>Akeyless: I need secret named `my_secret`, here's my API token.
+    Akeyless->>Akeyless: Check secret ACL.
+    Akeyless->>UO: This is allowed, here's the secret.
+    UO->>UO: Running job.
+    UO->>KeyfactorCommand: Job completed.
+```
+
+### Running the PAM provider on the Keyfactor Command Host
+
+When installing the PAM provider on the Keyfactor Command Host, it is installed on and run from the Keyfactor Command host.
+Below is a sequence diagram showing the flow of the PAM provider when it is run from the Keyfactor Command Host.
+
+```mermaid
+sequenceDiagram
+    KeyfactorCommand->>KeyfactorCommand: Creating a new job.
+    KeyfactorCommand->>Akeyless: Hello here are my credentials.
+    Akeyless->>KeyfactorCommand: Here's your API token.
+    KeyfactorCommand->>Akeyless: I need secret named `my_secret`, here's my API token.
+    Akeyless->>Akeyless: Check secret ACL.
+    Akeyless->>KeyfactorCommand: This is allowed, here's the secret.
+    UO->>KeyfactorCommand: Hello do you have any jobs for me?
+    KeyfactorCommand->>UO: Yes here's a job with these credentials I pulled from Akeyless.
+    UO->>UO: Running job.
+    UO->>KeyfactorCommand: Job completed.
+```
+
