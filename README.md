@@ -14,7 +14,7 @@
   <!-- TOC -->
   <a href="#support">
     <b>Support</b>
-  </a>
+  </a> 
   ·
   <a href="#getting-started">
     <b>Installation</b>
@@ -34,7 +34,7 @@
 The Akeyless PAM Provider allows for the retrieval of stored account credentials from an Akeyless secret.
 
 ## Support
-The Akeyless PAM Provider is supported by Keyfactor for Keyfactor customers. If you have a support issue, please open a support ticket via the Keyfactor Support Portal at https://support.keyfactor.com.
+The Akeyless PAM Provider is supported by Keyfactor for Keyfactor customers. If you have a support issue, please open a support ticket with your Keyfactor representative. If you have a support issue, please open a support ticket via the Keyfactor Support Portal at https://support.keyfactor.com. 
 
 > To report a problem or suggest a new feature, use the **[Issues](../../issues)** tab. If you want to contribute actual bug fixes or proposed enhancements, use the **[Pull requests](../../pulls)** tab.
 
@@ -54,6 +54,10 @@ Before proceeding with installation, you should consider which pattern is best f
 
 
 To install Akeyless PAM Provider, it is recommended you install [kfutil](https://github.com/Keyfactor/kfutil). `kfutil` is a command-line tool that simplifies the process of creating PAM Types in Keyfactor Command.
+
+
+
+
 
 
 
@@ -77,62 +81,63 @@ For full API docs please visit our [product documentation](https://software.keyf
 Below is the payload to `POST` to the Keyfactor Command API
 ```json
 {
-  "Name": "Akeyless",
-  "Parameters": [
-    {
-      "Name": "Url",
-      "DisplayName": "Akeyless URL",
-      "Description": "The URL to the Akeyless instance. Defaults to: https://api.akeyless.io",
-      "DataType": 1,
-      "InstanceLevel": false
-    },
-    {
-      "Name": "AccessId",
-      "DisplayName": "Access ID",
-      "Description": "The access key ID used to authenticate to Akeyless using `access_key` authentication.",
-      "DataType": 2,
-      "InstanceLevel": false
-    },
-    {
-      "Name": "AccessKey",
-      "DisplayName": "Access Key",
-      "Description": "The access key used to authenticate to Akeyless using `access_key` authentication.",
-      "DataType": 2,
-      "InstanceLevel": false
-    },
-    {
-      "Name": "AuthType",
-      "DisplayName": "Auth Type",
-      "Description": "The auth type used to authenticate to the Akeyless platform. Supported types are `access_key`.",
-      "DataType": 1,
-      "InstanceLevel": false
-    },
-    {
-      "Name": "SecretName",
-      "DisplayName": "Secret Name",
-      "Description": "The full name (path) of the secret in Akeyless that contains the credential to retrieve.",
-      "DataType": 1,
-      "InstanceLevel": true
-    },
-    {
-      "Name": "SecretType",
-      "DisplayName": "Secret Type",
-      "Description": "The type of secret stored in Akeyless. Supported types are `static_kv,static_text,static_json`.",
-      "DataType": 1,
-      "InstanceLevel": true
-    },
-    {
-      "Name": "StaticSecretFieldName",
-      "DisplayName": "Static Secret Field Name",
-      "Description": "The field name within a static secret to retrieve the credential from. Required for `static_kv` and optional for `static_json` secret types.",
-      "DataType": 1,
-      "InstanceLevel": true
-    }
-  ]
+    "Name": "Akeyless",
+    "Parameters": [
+        {
+            "Name": "Url",
+            "DisplayName": "Akeyless URL",
+            "Description": "The URL to the Akeyless instance. Defaults to: https://api.akeyless.io",
+            "DataType": 1,
+            "InstanceLevel": false
+        },
+        {
+            "Name": "AccessId",
+            "DisplayName": "Access ID",
+            "Description": "The access key ID used to authenticate to Akeyless using `access_key` authentication.",
+            "DataType": 2,
+            "InstanceLevel": false
+        },
+        {
+            "Name": "AccessKey",
+            "DisplayName": "Access Key",
+            "Description": "The access key used to authenticate to Akeyless using `access_key` authentication.",
+            "DataType": 2,
+            "InstanceLevel": false
+        },
+        {
+            "Name": "AuthType",
+            "DisplayName": "Auth Type",
+            "Description": "The auth type used to authenticate to the Akeyless platform. Supported types are `access_key`.",
+            "DataType": 1,
+            "InstanceLevel": false
+        },
+        {
+            "Name": "SecretName",
+            "DisplayName": "Secret Name",
+            "Description": "The full name (path) of the secret in Akeyless that contains the credential to retrieve.",
+            "DataType": 1,
+            "InstanceLevel": true
+        },
+        {
+            "Name": "SecretType",
+            "DisplayName": "Secret Type",
+            "Description": "The type of secret stored in Akeyless. Supported types are `static_kv,static_text,static_json`.",
+            "DataType": 1,
+            "InstanceLevel": true
+        },
+        {
+            "Name": "StaticSecretFieldName",
+            "DisplayName": "Static Secret Field Name",
+            "Description": "The field name within a static secret to retrieve the credential from. Required for `static_kv` and optional for `static_json` secret types.",
+            "DataType": 1,
+            "InstanceLevel": true
+        }
+    ]
 }
 ```
 
 #### Install PAM provider on Keyfactor Command Host (Local)
+
 
 
 1. On the server that hosts Keyfactor Command, download and unzip the latest release of the Akeyless PAM Provider from the [Releases](../../releases) page.
@@ -152,7 +157,7 @@ Below is the payload to `POST` to the Keyfactor Command API
     <details><summary>Keyfactor Command 10</summary>
 
     1. Copy the assemblies to each of the following directories:
-
+    
         * `C:\Program Files\Keyfactor\Keyfactor Platform\WebAgentServices\bin\akeyless-pam`
         * `C:\Program Files\Keyfactor\Keyfactor Platform\KeyfactorAPI\bin\akeyless-pam`
         * `C:\Program Files\Keyfactor\Keyfactor Platform\WebConsole\bin\akeyless-pam`
@@ -166,7 +171,7 @@ Below is the payload to `POST` to the Keyfactor Command API
         <container>
             ...
             <!--The following are PAM Provider registrations. Uncomment them to use them in the Keyfactor Product:-->
-
+            
             <!--Add the following line exactly to register the PAM Provider-->
             <register type="IPAMProvider" mapTo="Keyfactor.Extensions.Pam.Akeyless, Keyfactor.Command.PAMProviders" name="Akeyless" />
         </container>
@@ -183,12 +188,15 @@ Below is the payload to `POST` to the Keyfactor Command API
 
 3. Restart the Keyfactor Command services (`iisreset`).
 
+
+
+
 #### Install PAM provider on a Universal Orchestrator Host (Remote)
 
 
 1. Install the Akeyless PAM Provider assemblies.
 
-    * **Using kfutil**: On the server that hosts the Universal Orchestrator, run the following command:
+    * **Using kfutil**: On the server that that hosts the Universal Orchestrator, run the following command:
 
         ```shell
         # Windows Server
@@ -205,14 +213,16 @@ Below is the payload to `POST` to the Keyfactor Command API
 
 2. Included in the release is a `manifest.json` file that contains the following object:
     ```json
+
     {
-      "Keyfactor:PAMProviders:Akeyless:InitializationInfo": {
-        "Url": "<Url>",
-        "AccessId": "<AccessId>",
-        "AccessKey": "<AccessKey>",
-        "AuthType": "<AuthType>"
-      }
+        "Keyfactor:PAMProviders:Akeyless-:InitializationInfo": {
+            "Url": "https://api.akeyless.io",
+            "AuthType": "access_key",
+            "AccessId": "<ACCESS_ID>",
+            "AccessKey": "<ACCESS_KEY>"
+        }
     }
+
     ```
 
     Populate the fields in this object with credentials and configuration data collected in the [requirements](docs/akeyless.md#requirements) section.
@@ -220,10 +230,23 @@ Below is the payload to `POST` to the Keyfactor Command API
 3. Restart the Universal Orchestrator service.
 
 
+
+
+
+
+
+
+
 ### Usage
 
 
+
+
+
+
 #### From Keyfactor Command Host (Local)
+
+
 
 ##### Define a PAM provider in Command
 1. In the Keyfactor Command Portal, hover over the ⚙️  (settings) icon in the top right corner of the screen and select **Priviledged Access Management**.
@@ -258,7 +281,11 @@ Select the **Load From PAM Provider** tab, choose the **Akeyless** provider from
 | StaticSecretFieldName | Static Secret Field Name | The field name within a static secret to retrieve the credential from. Required for `static_kv` and optional for `static_json` secret types. |
 
 
+
+
+
 #### From a Universal Orchestrator Host (Remote)
+
 
 
 <details><summary>Keyfactor Command 11+</summary>
@@ -301,7 +328,7 @@ When defining Certificate Stores (**Locations**->**Certificate Stores**), **Akey
 When entering Secret fields, select the **Load From Keyfactor Secrets** tab, and populate the **Secret Value** field with the following JSON object:
 
 ```json
-{"SecretName":"The full name (path) of the secret in Akeyless that contains the credential to retrieve.","SecretType":"The type of secret stored in Akeyless. Supported types are `static_kv,static_text,static_json`.","StaticSecretFieldName":"The field name within a static secret to retrieve the credential from. Required for `static_kv` and optional for `static_json` secret types."}
+{"SecretName": "The full name (path) of the secret in Akeyless that contains the credential to retrieve.","SecretType": "The type of secret stored in Akeyless. Supported types are `static_kv,static_text,static_json`.","StaticSecretFieldName": "The field name within a static secret to retrieve the credential from. Required for `static_kv` and optional for `static_json` secret types."}
 
 ```
 
@@ -310,216 +337,13 @@ When entering Secret fields, select the **Load From Keyfactor Secrets** tab, and
 </details>
 
 
+
+
+
+
 > [!NOTE]
 > Additional information on Akeyless can be found in the [supplemental documentation](docs/akeyless.md).
 
-#### Extension Mechanics
-
-When configuring Akeyless for use as a PAM Provider with Keyfactor, you will need to ensure that your
-instance is configured for API access using the desired auth method. This can be done by an Akeyless administrator.
-For more details visit the vendor
-docs [here](https://docs.akeyless.io/docs/access-and-authentication-methods).
-
-Once API access is configured the credential *MUST* be granted access to view secret(s) you'll be using.
-
-### Granting an Auth Method Access to a Secret
-
-In Akeyless, access is controlled through **Access Roles**. A role ties one or more auth methods to a set of permitted item paths. The steps below show how to grant an API Key auth method read access to a secret using the Akeyless console.
-
-**1. Create an Access Role** (if one doesn't exist already)
-
-Navigate to **Access Roles** → **New Role**, give it a name (e.g. `keyfactor-pam`), and save.
-
-**2. Associate the Auth Method with the Role**
-
-Open the role, go to the **Auth Methods** tab, and click **Associate**. Select the API Key auth method whose Access ID and Access Key you'll be configuring in Keyfactor.
-
-**3. Add a secret access rule to the Role**
-
-Still in the role, go to the **Access Rules** (or **Items**) tab and click **Add Rule**:
-
-| Field | Value |
-|---|---|
-| Item path | The full path to your secret, e.g. `/my-org/my-app/db-password`. Wildcards are supported, e.g. `/my-org/my-app/*` |
-| Access type | `read` |
-
-Save the rule.
-
-Once the rule is in place, the auth method can authenticate and retrieve any secret that matches the configured path. You can verify access using the Akeyless CLI:
-
-```shell
-akeyless auth --access-id <ACCESS_ID> --access-key <ACCESS_KEY>
-akeyless get-secret-value --name /my-org/my-app/db-password --token <TOKEN>
-```
-
-### Granting an Auth Method Access to a Secret (CLI)
-
-The full service account setup can be scripted using the Akeyless CLI. The `create-auth-method-api-key` command returns the Access ID and Access Key you'll need for the Keyfactor configuration.
-
-```shell
-# 1. Create the API Key auth method
-#    The response includes the Access ID and Access Key — save these.
-akeyless create-auth-method-api-key --name /keyfactor/pam-auth-method
-
-# 2. Create an access role
-akeyless create-role --name keyfactor-pam
-
-# 3. Associate the auth method with the role
-akeyless assoc-role-auth-method \
-  --role-name keyfactor-pam \
-  --am-name /keyfactor/pam-auth-method
-
-# 4. Grant the role read access to a secret path (wildcards supported)
-akeyless set-role-rule \
-  --role-name keyfactor-pam \
-  --path "/my-org/my-app/*" \
-  --capability read
-```
-
-After adding and sharing a secret, you can use the secret's name (the "Secret name") to retrieve credentials from Akeyless as a PAM Provider.
-
-### Running the PAM provider on Keyfactor Universal Orchestrator (UO)
-
-When installing on the Universal Orchestrator (UO), the PAM provider is installed on and run from the UO host. Below is a sequence diagram
-showing the flow of the PAM provider when it is run from the UO.
-
-```mermaid
-sequenceDiagram
-    KeyfactorCommand->>KeyfactorCommand: New job created.
-    UO->>KeyfactorCommand: Hello do you have any jobs for me?
-    KeyfactorCommand->>UO: Yes here's a job.
-    UO->>Akeyless: Hello here are my client credentials.
-    Akeyless->>UO: Here's your API token.
-    UO->>Akeyless: I need secret named `my_secret`, here's my API token.
-    Akeyless->>Akeyless: Check secret ACL.
-    Akeyless->>UO: This is allowed, here's the secret.
-    UO->>UO: Running job.
-    UO->>KeyfactorCommand: Job completed.
-```
-
-### Running the PAM provider on the Keyfactor Command Host
-
-When installing the PAM provider on the Keyfactor Command Host, it is installed on and run from the Keyfactor Command host.
-Below is a sequence diagram showing the flow of the PAM provider when it is run from the Keyfactor Command Host.
-
-```mermaid
-sequenceDiagram
-    KeyfactorCommand->>KeyfactorCommand: Creating a new job.
-    KeyfactorCommand->>Akeyless: Hello here are my credentials.
-    Akeyless->>KeyfactorCommand: Here's your API token.
-    KeyfactorCommand->>Akeyless: I need secret named `my_secret`, here's my API token.
-    Akeyless->>Akeyless: Check secret ACL.
-    Akeyless->>KeyfactorCommand: This is allowed, here's the secret.
-    UO->>KeyfactorCommand: Hello do you have any jobs for me?
-    KeyfactorCommand->>UO: Yes here's a job with these credentials I pulled from Akeyless.
-    UO->>UO: Running job.
-    UO->>KeyfactorCommand: Job completed.
-```
-
-## Supported Authentication Methods
-
-### Access Key (API Key) Authentication
-This method uses an Access Key and Access ID pair to authenticate to the Akeyless API. These credentials can be created in the Akeyless console.
-For more information, see the [Akeyless documentation](https://tutorials.akeyless.io/docs/authentication-methods-and-api-key-authentication).
-
-#### Example `manifest.json` configuration:
-
-```json
-{
-  "extensions": {
-    "Keyfactor.Platform.Extensions.IPAMProvider": {
-      "PAMProviders.Akeyless.PAMProvider": {
-        "assemblyPath": "akeyless-pam.dll",
-        "TypeFullName": "Keyfactor.Extensions.Pam.Akeyless.AkeylessPam"
-      }
-    }
-  },
-  "Keyfactor:PAMProviders:Akeyless-:InitializationInfo": {
-    "Url": "https://api.akeyless.io",
-    "AuthType": "access_key",
-    "AccessId": "<ACCESS_ID>",
-    "AccessKey": "<ACCESS_KEY>"
-  }
-}
-```
-
-## Supported Secret Types
-Below are the types of Akeyless secret that are supported by this provider.
-
-### Static Secrets
-For full details on static secrets, see the [Akeyless documentation](https://docs.akeyless.io/docs/secret-management/static-secrets).
-
-| Secret Type   | Description                                                                          | Additional Fields                                                                                                                          |
-|---------------|--------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
-| `static_text` | A static secret whose value is returned as a plain string                            | N/A                                                                                                                                        |
-| `static_json` | A static secret containing JSON; a specific field can optionally be extracted        | *Optional*: `StaticSecretFieldName`. Use this to parse a specific field value from a JSON secret, else the full JSON blob will be returned |
-| `static_kv`   | A static secret containing key-value pairs; a specific field is extracted by name    | *Required*: `StaticSecretFieldName`. Use this to parse a specific field value from a key-value secret. For example `password`.             |
-
----
-
-#### `static_text`
-
-A static secret whose entire value is a plain string. The value is returned as-is with no parsing.
-
-**Example secret value in Akeyless:**
-```
-s3cr3tP@ssword!
-```
-
-**Example instance parameter configuration:**
-
-| Parameter | Value |
-|-----------|-------|
-| `SecretName` | `/my-org/my-app/db-password` |
-| `SecretType` | `static_text` |
-
----
-
-#### `static_json`
-
-A static secret whose value is a JSON object. The provider can return either the full JSON blob or a single extracted field.
-
-- If `StaticSecretFieldName` is **omitted**, the full JSON string is returned.
-- If `StaticSecretFieldName` is **provided**, only the value of that field is returned.
-
-> **Note:** The Keyfactor Command portal may display `StaticSecretFieldName` as a required field. If you want the full JSON blob returned (no field extraction), enter a single space (` `) in the field — the provider treats whitespace-only values as empty.
-
-**Example secret value in Akeyless:**
-```json
-{
-  "username": "db_user",
-  "password": "s3cr3tP@ssword!"
-}
-```
-
-**Example instance parameter configuration (extract a single field):**
-
-| Parameter | Value |
-|-----------|-------|
-| `SecretName` | `/my-org/my-app/db-credentials` |
-| `SecretType` | `static_json` |
-| `StaticSecretFieldName` | `password` |
-
----
-
-#### `static_kv`
-
-A static secret whose value is a set of key-value pairs, one per line in `key=value` format. A specific field must be named via `StaticSecretFieldName`.
-
-**Example secret value in Akeyless:**
-```
-username=db_user
-password=s3cr3tP@ssword!
-host=db.example.com
-```
-
-**Example instance parameter configuration:**
-
-| Parameter | Value |
-|-----------|-------|
-| `SecretName` | `/my-org/my-app/db-credentials` |
-| `SecretType` | `static_kv` |
-| `StaticSecretFieldName` | `password` |
 
 
 ## License
