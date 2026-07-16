@@ -139,6 +139,17 @@ docs [here](https://docs.akeyless.io/docs/access-and-authentication-methods).
 
 Once API access is configured the credential *MUST* be granted access to view secret(s) you'll be using.
 
+### Akeyless API Endpoints Used
+
+The provider calls exactly two Akeyless REST API endpoints, both against the configured base URL (default `https://api.akeyless.io`, see the `Url` initialization parameter / `AKEYLESS_API_URL` environment variable above):
+
+| Endpoint | Method | Called from | Purpose |
+|---|---|---|---|
+| [`/auth`](https://docs.akeyless.io/reference/auth) | `POST` | `AkeylessApiClient.Authenticate` (invoked once per `GetPassword` call, before secret retrieval) | Exchanges the configured `AccessId`/`AccessKey` for a short-lived auth token. |
+| [`/get-secret-value`](https://docs.akeyless.io/reference/getsecretvalue) | `POST` | `AkeylessApiClient.GetSecretValuesAsync` (invoked once per `GetPassword` call, after authentication) | Retrieves the value of the secret named by the `SecretName` instance parameter, using the token from `/auth`. |
+
+No other Akeyless API endpoints are called by this provider — it only ever authenticates and reads a single static secret value per credential lookup. It never creates, updates, deletes, or lists items in Akeyless.
+
 ### Granting an Auth Method Access to a Secret
 
 In Akeyless, access is controlled through **Access Roles**. A role ties one or more auth methods to a set of permitted item paths. The steps below show how to grant an API Key auth method read access to a secret using the Akeyless console.
