@@ -145,14 +145,23 @@ public class AkeylessPam : IPAMProvider
     /// </returns>
     /// <remarks>
     ///     Unlike a plain <c>??</c> null-coalesce against <see cref="Environment.GetEnvironmentVariable(string)" />,
-    ///     this treats an env var explicitly set to an empty string the same as an unset env var — it does not
-    ///     override the configured value. This avoids a misconfigured/empty environment variable silently blanking
-    ///     out a valid `manifest.json`/Command portal value (e.g. `Url`, `AccessId`, `AccessKey`, `AuthType`).
+    ///     this treats an env var explicitly set to an empty or whitespace-only string the same as an unset env
+    ///     var — it does not override the configured value. This avoids a misconfigured/blank environment variable
+    ///     silently blanking out a valid `manifest.json`/Command portal value (e.g. `Url`, `AccessId`, `AccessKey`,
+    ///     `AuthType`).
+    ///     <para>
+    ///         Audit trail: when an override is active, this logs which environment variable is overriding —
+    ///         never the value — so an incident investigation can tell whether the effective connection
+    ///         parameter used at runtime matches Command's recorded configuration.
+    ///     </para>
     /// </remarks>
-    private static string ResolveEnvOverride(string envVarName)
+    private string ResolveEnvOverride(string envVarName)
     {
         var value = Environment.GetEnvironmentVariable(envVarName);
-        return string.IsNullOrEmpty(value) ? null : value;
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        Logger.LogInformation("Environment variable override active for {EnvVar}", envVarName);
+        return value;
     }
 
     private IAkeylessApiClient InitClient(AkeylessConfiguration configurationInfo)

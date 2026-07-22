@@ -23,7 +23,7 @@ Connection and authentication parameters can be set in two ways:
 | `AKEYLESS_ACCESS_ID` | `AccessId` | configured `AccessId` initialization parameter |
 | `AKEYLESS_ACCESS_KEY` | `AccessKey` | configured `AccessKey` initialization parameter |
 
-Precedence for each: environment variable (if set to a non-empty value) > configured initialization parameter > default (`Url` only). An environment variable that is unset, or explicitly set to an empty string, is treated as "not overriding" and falls through to the configured value.
+Precedence for each: environment variable (if set to a non-empty, non-whitespace-only value) > configured initialization parameter > default (`Url` only). An environment variable that is unset, or explicitly set to an empty or whitespace-only string, is treated as "not overriding" and falls through to the configured value. When an override is active, the provider logs which environment variable is overriding (never the value), so an incident investigation can confirm whether the effective connection parameter matches Command's recorded configuration.
 
 ## Supported Authentication Methods
 
