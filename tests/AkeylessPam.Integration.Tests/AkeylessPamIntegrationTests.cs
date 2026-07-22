@@ -199,6 +199,12 @@ public class AkeylessPamIntegrationTests
             ["SecretName"] = Env("AKEYLESS_SECRET_STATIC_TEXT")
         };
 
+        // AKEYLESS_ACCESS_ID/AKEYLESS_ACCESS_KEY (required for every other test in this suite to run)
+        // would otherwise override the bad credentials above via AkeylessPam's env var override support,
+        // making auth succeed instead of failing. Clear them for the duration of this test only.
+        using var idScope = new EnvVarScope("AKEYLESS_ACCESS_ID", null);
+        using var keyScope = new EnvVarScope("AKEYLESS_ACCESS_KEY", null);
+
         var pam = new AkeylessPam();
         var ex = Assert.Throws<AggregateException>(() => pam.GetPassword(instance, server));
         Assert.IsType<InvalidClientConfigurationException>(ex.InnerException);
@@ -252,5 +258,27 @@ public class AkeylessPamIntegrationTests
         Assert.NotEmpty(result);
         Assert.True(result.TrimStart().StartsWith('{') || result.TrimStart().StartsWith('['),
             "Expected raw JSON blob even when StaticSecretFieldName is whitespace-only");
+    }
+}
+
+/// <summary>
+/// Sets an environment variable for the duration of a test and restores the prior value (or clears it,
+/// if it was previously unset) on dispose.
+/// </summary>
+internal sealed class EnvVarScope : IDisposable
+{
+    private readonly string _name;
+    private readonly string? _previousValue;
+
+    public EnvVarScope(string name, string? value)
+    {
+        _name = name;
+        _previousValue = Environment.GetEnvironmentVariable(name);
+        Environment.SetEnvironmentVariable(name, value);
+    }
+
+    public void Dispose()
+    {
+        Environment.SetEnvironmentVariable(_name, _previousValue);
     }
 }

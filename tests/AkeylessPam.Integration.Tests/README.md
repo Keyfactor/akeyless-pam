@@ -42,7 +42,7 @@ End-to-end tests for `AkeylessPam.GetPassword()` against a live Akeyless instanc
 | `GetPassword_StaticJson_UsernameField_ReturnsValue` | credentials + `AKEYLESS_SECRET_STATIC_JSON` | Retrieves the `username` field from a `static_json` secret |
 | `GetPassword_StaticJson_PasswordField_ReturnsValue` | credentials + `AKEYLESS_SECRET_STATIC_JSON` | Retrieves the `password` field from a `static_json` secret |
 | `GetPassword_StaticJson_NoFieldName_ReturnsRawJsonBlob` | credentials + `AKEYLESS_SECRET_STATIC_JSON_RAW` | Retrieves a `static_json` secret without specifying a field, asserts result is a JSON object or array |
-| `GetPassword_BadCredentials_ThrowsInvalidClientConfigurationException` | `AKEYLESS_SECRET_STATIC_TEXT` (no credentials needed) | Intentionally uses invalid credentials and asserts `InvalidClientConfigurationException` is thrown |
+| `GetPassword_BadCredentials_ThrowsInvalidClientConfigurationException` | `AKEYLESS_SECRET_STATIC_TEXT` | Intentionally uses invalid credentials and asserts `InvalidClientConfigurationException` is thrown. Clears `AKEYLESS_ACCESS_ID`/`AKEYLESS_ACCESS_KEY` for the duration of the test so the env var override feature doesn't replace the bad credentials with real ones |
 | `GetPassword_NonexistentSecret_ThrowsException` | credentials | Requests a secret path that does not exist and asserts an exception is thrown |
 | `GetPassword_StaticJson_NoFieldName_ReturnsRawJsonBlob_K8sOrchestratorSecret` | credentials | Retrieves `/pam/test/k8s-orchestrator` as `static_json` with no field name and asserts the full JSON blob is returned |
 | `GetPassword_StaticJson_WhitespaceFieldName_ReturnsRawJsonBlob_K8sOrchestratorSecret` | credentials | Same as above but passes a whitespace-only `StaticSecretFieldName` (simulating the Keyfactor Command portal behavior); asserts the full JSON blob is returned |
@@ -62,3 +62,4 @@ Lower-level tests for `AkeylessApiClient` — the adapter that wraps the Akeyles
 | `GetSecretValuesAsync_StaticJsonSecret_ReturnsDictWithValue` | Retrieves a `static_json` secret and asserts the response dictionary contains a non-empty value |
 | `GetSecretValuesAsync_MultipleSecrets_ReturnsAllRequested` | Requests two secrets in a single API call and asserts both keys are present in the response |
 | `GetSecretValuesAsync_InvalidToken_ThrowsApiException` | Calls `GetSecretValuesAsync` with an invalid token and asserts an `ApiException` is thrown |
+| `Debug_K8sOrchestratorSecret_PrintsRawValue` | Retrieves the hardcoded `/pam/test/k8s-orchestrator` secret directly via the API client and asserts the response contains that key (the value itself is intentionally not written to output, to avoid secret exposure in CI logs) |
