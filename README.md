@@ -59,6 +59,7 @@ To install Akeyless PAM Provider, it is recommended you install [kfutil](https:/
 
 #### Requirements
    - Akeyless credentials w/ permission to access the secret(s) being used. See the [Akeyless documentation](https://docs.akeyless.io/reference/auth) for more information on how to configure the different types of auth.
+   - (Optional) `AKEYLESS_API_URL`, `AKEYLESS_AUTH_TYPE`, `AKEYLESS_ACCESS_ID`, and `AKEYLESS_ACCESS_KEY` environment variables can be set on the provider's host process to override the corresponding `manifest.json`/Command portal parameters at runtime. See [Configuration](docs/akeyless.md#configuration) for details and precedence.
 
 #### Create PAM type in Keyfactor Command
 

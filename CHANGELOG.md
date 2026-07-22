@@ -1,3 +1,9 @@
+# v1.1.0
+
+## Features
+
+- **Environment variable overrides for connection parameters** — `AuthType`, `AccessId`, and `AccessKey` can now be overridden at runtime via the `AKEYLESS_AUTH_TYPE`, `AKEYLESS_ACCESS_ID`, and `AKEYLESS_ACCESS_KEY` environment variables, respectively, matching the existing `AKEYLESS_API_URL` override for the Akeyless API URL. This lets deployments control Akeyless connection details at the infrastructure/deployment level (e.g. process environment, secrets injection) instead of only via `manifest.json` or the Command portal.
+
 # v1.0.0
 
 Initial release of the Akeyless PAM Provider for Keyfactor Command and Universal Orchestrator.

@@ -7,6 +7,23 @@ these authentication methods, see the [Akeyless documentation](https://docs.akey
 ## Requirements
 
 - Akeyless credentials w/ permission to access the secret(s) being used. See the [Akeyless documentation](https://docs.akeyless.io/reference/auth) for more information on how to configure the different types of auth.
+- (Optional) `AKEYLESS_API_URL`, `AKEYLESS_AUTH_TYPE`, `AKEYLESS_ACCESS_ID`, and `AKEYLESS_ACCESS_KEY` environment variables can be set on the provider's host process to override the corresponding `manifest.json`/Command portal parameters at runtime. See [Configuration](docs/akeyless.md#configuration) for details and precedence.
+
+## Configuration
+
+Connection and authentication parameters can be set in two ways:
+
+1. **`manifest.json`/Command portal parameters** — set via the `manifest.json` `InitializationInfo` block (Universal Orchestrator installs) or the corresponding fields in the Command portal PAM provider configuration (Command host installs). This is the standard way to configure the provider.
+2. **Environment variables** — if set on the host process running the PAM provider (the Keyfactor Command server for local installs, or the Universal Orchestrator host for remote installs), these override whatever value is configured via `manifest.json` or the Command portal. This is useful when connection details need to be controlled at the infrastructure/deployment level rather than baked into provider configuration — for example, pointing different environments (dev/stage/prod) at different Akeyless instances or credentials without changing `manifest.json` or Command PAM provider settings.
+
+| Environment Variable | Overrides | Falls Back To |
+|---|---|---|
+| `AKEYLESS_API_URL` | `Url` | configured `Url` initialization parameter, then default (`https://api.akeyless.io`) |
+| `AKEYLESS_AUTH_TYPE` | `AuthType` | configured `AuthType` initialization parameter |
+| `AKEYLESS_ACCESS_ID` | `AccessId` | configured `AccessId` initialization parameter |
+| `AKEYLESS_ACCESS_KEY` | `AccessKey` | configured `AccessKey` initialization parameter |
+
+Precedence for each: environment variable (if set to a non-empty, non-whitespace-only value) > configured initialization parameter > default (`Url` only). An environment variable that is unset, or explicitly set to an empty or whitespace-only string, is treated as "not overriding" and falls through to the configured value. When an override is active, the provider logs which environment variable is overriding (never the value), so an incident investigation can confirm whether the effective connection parameter matches Command's recorded configuration.
 
 ## Supported Authentication Methods
 
@@ -122,6 +139,17 @@ For more details visit the vendor
 docs [here](https://docs.akeyless.io/docs/access-and-authentication-methods).
 
 Once API access is configured the credential *MUST* be granted access to view secret(s) you'll be using.
+
+### Akeyless API Endpoints Used
+
+The provider calls exactly two Akeyless REST API endpoints, both against the configured base URL (default `https://api.akeyless.io`, see the `Url` initialization parameter / `AKEYLESS_API_URL` environment variable above):
+
+| Endpoint | Method | Called from | Purpose |
+|---|---|---|---|
+| [`/auth`](https://docs.akeyless.io/reference/auth) | `POST` | `AkeylessApiClient.Authenticate` (invoked once per `GetPassword` call, before secret retrieval) | Exchanges the configured `AccessId`/`AccessKey` for a short-lived auth token. |
+| [`/get-secret-value`](https://docs.akeyless.io/reference/getsecretvalue) | `POST` | `AkeylessApiClient.GetSecretValuesAsync` (invoked once per `GetPassword` call, after authentication) | Retrieves the value of the secret named by the `SecretName` instance parameter, using the token from `/auth`. |
+
+No other Akeyless API endpoints are called by this provider — it only ever authenticates and reads a single static secret value per credential lookup. It never creates, updates, deletes, or lists items in Akeyless.
 
 ### Granting an Auth Method Access to a Secret
 
