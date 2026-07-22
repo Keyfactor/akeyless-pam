@@ -135,41 +135,74 @@ public class AkeylessPam : IPAMProvider
         }
     }
 
+    /// <summary>
+    ///     Resolves an environment variable override for a connection parameter.
+    /// </summary>
+    /// <param name="envVarName">The name of the environment variable to check.</param>
+    /// <returns>
+    ///     The environment variable's value if it is set to a non-empty, non-whitespace string; otherwise, <c>null</c>
+    ///     so the caller falls back to the configured value.
+    /// </returns>
+    /// <remarks>
+    ///     Unlike a plain <c>??</c> null-coalesce against <see cref="Environment.GetEnvironmentVariable(string)" />,
+    ///     this treats an env var explicitly set to an empty or whitespace-only string the same as an unset env
+    ///     var — it does not override the configured value. This avoids a misconfigured/blank environment variable
+    ///     silently blanking out a valid `manifest.json`/Command portal value (e.g. `Url`, `AccessId`, `AccessKey`,
+    ///     `AuthType`).
+    ///     <para>
+    ///         Audit trail: when an override is active, this logs which environment variable is overriding —
+    ///         never the value — so an incident investigation can tell whether the effective connection
+    ///         parameter used at runtime matches Command's recorded configuration.
+    ///     </para>
+    /// </remarks>
+    private string ResolveEnvOverride(string envVarName)
+    {
+        var value = Environment.GetEnvironmentVariable(envVarName);
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        Logger.LogInformation("Environment variable override active for {EnvVar}", envVarName);
+        return value;
+    }
+
     private IAkeylessApiClient InitClient(AkeylessConfiguration configurationInfo)
     {
         try
         {
             Logger.MethodEntry();
-            var basePath = Environment.GetEnvironmentVariable("AKEYLESS_API_URL") ??
+            var basePath = ResolveEnvOverride("AKEYLESS_API_URL") ??
                            configurationInfo.Url ?? "https://api.akeyless.io";
+
+            var authType = ResolveEnvOverride("AKEYLESS_AUTH_TYPE") ?? configurationInfo.AuthType;
+            var accessId = ResolveEnvOverride("AKEYLESS_ACCESS_ID") ?? configurationInfo.AccessId;
+            var accessKey = ResolveEnvOverride("AKEYLESS_ACCESS_KEY") ?? configurationInfo.AccessKey;
 
             var client = _clientFactory(basePath);
 
-            switch (configurationInfo.AuthType)
+            switch (authType)
             {
                 case "access_key":
                     Logger.LogDebug("Authenticating with Akeyless using access_key auth, AccessId: '{AccessId}'",
-                        configurationInfo.AccessId);
-                    var token = client.Authenticate(configurationInfo.AccessId, configurationInfo.AccessKey);
+                        accessId);
+                    var token = client.Authenticate(accessId, accessKey);
 
                     if (string.IsNullOrEmpty(token))
                     {
                         Logger.LogError(
                             "Authentication failed: unable to obtain access token from Akeyless for AccessId '{AccessId}'",
-                            configurationInfo.AccessId);
+                            accessId);
                         throw new InvalidTokenException("Unable to obtain access token from Akeyless server");
                     }
 
                     AuthToken = token;
                     Logger.LogInformation(
                         "Successfully authenticated with Akeyless using AccessId '{AccessId}'",
-                        configurationInfo.AccessId);
+                        accessId);
                     break;
 
                 default:
                     Logger.LogWarning(
                         "No authentication performed for unrecognised auth type '{AuthType}'",
-                        configurationInfo.AuthType);
+                        authType);
                     break;
             }
 
