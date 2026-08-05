@@ -426,8 +426,9 @@ public class EnvironmentVariableOverrideTests
     [Fact]
     public void GetPassword_ConfiguredAccessIdHasEmbeddedControlCharacter_ThrowsInvalidClientConfigurationException()
     {
-        // The printable-ASCII allowlist is applied to the final resolved value regardless of source, so a
-        // malicious/malformed AccessId supplied via Command's server configuration (no env var override
+        // The printable-ASCII allowlist is applied to the configured value in BuildAkeylessConfiguration
+        // (before its own log statements echo it), not just to the final resolved value in InitClient, so
+        // a malicious/malformed AccessId supplied via Command's server configuration (no env var override
         // involved) is rejected too -- not just the override path. Explicitly unset the env var so an
         // ambient AKEYLESS_ACCESS_ID on the host running the tests can't silently override it.
         using var _ = new EnvVarScope("AKEYLESS_ACCESS_ID", null);
@@ -435,10 +436,27 @@ public class EnvironmentVariableOverrideTests
         var mock = new Mock<IAkeylessApiClient>();
         var pam = new AkeylessPam(_ => mock.Object);
 
-        var ex = Assert.Throws<AggregateException>(() =>
+        // BuildAkeylessConfiguration runs synchronously (before the .Result call boundary), so this throws
+        // directly rather than wrapped in an AggregateException.
+        Assert.Throws<InvalidClientConfigurationException>(() =>
             pam.GetPassword(Params.Instance(), Params.ValidServer(accessId: "configured-id\r\nforged log line")));
 
-        Assert.IsType<InvalidClientConfigurationException>(ex.InnerException);
+        mock.Verify(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public void GetPassword_ConfiguredUrlHasEmbeddedControlCharacter_ThrowsInvalidClientConfigurationException()
+    {
+        // Same as above but for Url: BuildAkeylessConfiguration's own "Using Akeyless URL ..." debug log
+        // echoes config.Url before InitClient is ever reached, so this must be validated at that point too.
+        using var _ = new EnvVarScope("AKEYLESS_API_URL", null);
+
+        var mock = new Mock<IAkeylessApiClient>();
+        var pam = new AkeylessPam(_ => mock.Object);
+
+        Assert.Throws<InvalidClientConfigurationException>(() =>
+            pam.GetPassword(Params.Instance(), Params.ValidServer(url: "https://api.akeyless.io\r\nforged log line")));
+
         mock.Verify(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 

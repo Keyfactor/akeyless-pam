@@ -181,9 +181,11 @@ public class AkeylessPam : IPAMProvider
     ///     and zero-width/variation-selector characters have all been found, one at a time, to let a value forge
     ///     extra log lines or render differently than its actual content in the structured log messages that
     ///     echo these values), this allowlists the narrow range of characters that are actually legitimate and
-    ///     rejects everything else in one check. Applied uniformly to the final resolved value regardless of
-    ///     whether it came from an env var override or Command's/manifest.json's configured value, since both
-    ///     reach the same log statements and the same Akeyless API calls.
+    ///     rejects everything else in one check. Called from two places so the guarantee holds no matter which
+    ///     log statement runs first: <see cref="BuildAkeylessConfiguration" /> validates the Command-/
+    ///     manifest.json-configured value before its own log statements echo it, and <see cref="InitClient" />
+    ///     separately validates the final resolved value (which may instead be an env var override) before its
+    ///     own log statements echo that.
     /// </remarks>
     /// <exception cref="InvalidClientConfigurationException">
     ///     Thrown if the value contains any character outside the printable ASCII range (0x20-0x7E).
@@ -631,6 +633,12 @@ public class AkeylessPam : IPAMProvider
                     AkeylessConstants.DefaultAkeylessApiUrl),
                 AuthType = authType
             };
+            // Validated here, before the first log statement that echoes these values, rather than relying
+            // on InitClient's later EnsurePrintableAscii calls — those run on a separate, later call path
+            // (GetAkeylessSecretAsync -> InitClient) and would leave a malicious/malformed Command-configured
+            // value (no env var override needed) logged raw by the two LogDebug calls below.
+            EnsurePrintableAscii(config.Url, "Url");
+            EnsurePrintableAscii(config.AuthType, "AuthType");
             Logger.LogDebug("Using Akeyless URL '{Url}', auth type '{AuthType}'", config.Url, config.AuthType);
 
             switch (authType)
@@ -641,6 +649,8 @@ public class AkeylessPam : IPAMProvider
                 case "access_key":
                     config.AccessId = connectionConfiguration[AkeylessConfiguration.ACCESS_ID];
                     config.AccessKey = connectionConfiguration[AkeylessConfiguration.ACCESS_KEY];
+                    EnsurePrintableAscii(config.AccessId, "AccessId");
+                    EnsurePrintableAscii(config.AccessKey, "AccessKey");
                     // NOTE: AccessId logged (not secret), AccessKey intentionally omitted.
                     Logger.LogDebug("Access key auth configured with AccessId '{AccessId}'", config.AccessId);
                     break;
