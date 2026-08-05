@@ -8,7 +8,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -152,48 +151,49 @@ public class AkeylessPam : IPAMProvider
     ///     `AuthType`). The returned value is trimmed because env vars sourced from mounted secret files/configmaps
     ///     commonly carry an incidental trailing newline, which would otherwise fail exact-match comparisons
     ///     (auth type) or authentication (AccessId/AccessKey) with no indication that whitespace was the cause.
-    ///     An override that still contains an embedded line break after trimming is rejected outright — none of
-    ///     the overridable parameters are legitimately multi-line, and letting one through would let it forge
-    ///     extra lines in the structured log messages that echo the resolved value (e.g. AccessId, AuthType).
     ///     <para>
     ///         Audit trail: when an override is active, this logs which environment variable is overriding —
     ///         never the value — so an incident investigation can tell whether the effective connection
-    ///         parameter used at runtime matches Command's recorded configuration.
+    ///         parameter used at runtime matches Command's recorded configuration. The resolved value is not
+    ///         content-validated here — <see cref="EnsurePrintableAscii" /> validates it (and the equivalent
+    ///         configured value, when no override is active) once the caller has settled on the final value to
+    ///         use, so the same content guarantee applies regardless of which source it came from.
     ///     </para>
     /// </remarks>
-    /// <exception cref="InvalidClientConfigurationException">
-    ///     Thrown if the environment variable's trimmed value still contains a non-printable or
-    ///     directionality-control character.
-    /// </exception>
     private string ResolveEnvOverride(string envVarName)
     {
         var value = Environment.GetEnvironmentVariable(envVarName);
         if (string.IsNullOrWhiteSpace(value)) return null;
 
-        var trimmed = value.Trim();
-        // Reject by Unicode category rather than a \n/\r blocklist. This covers ANSI escape sequences
-        // and NUL/form-feed/vertical-tab (Control), the Unicode line/paragraph separators U+2028/U+2029
-        // (LineSeparator/ParagraphSeparator), and bidirectional-override/zero-width characters such as
-        // U+202E RIGHT-TO-LEFT OVERRIDE (Format) — any of which could otherwise forge an extra rendered
-        // log line or make the value displayed in a log/terminal differ from its actual content.
-        if (trimmed.Any(c => char.GetUnicodeCategory(c) is
-                UnicodeCategory.Control or
-                UnicodeCategory.Format or
-                UnicodeCategory.Surrogate or
-                UnicodeCategory.PrivateUse or
-                UnicodeCategory.OtherNotAssigned or
-                UnicodeCategory.LineSeparator or
-                UnicodeCategory.ParagraphSeparator))
-        {
-            Logger.LogError(
-                "Environment variable {EnvVar} contains a non-printable or directionality-control character; refusing to use it as an override",
-                envVarName);
-            throw new InvalidClientConfigurationException(
-                $"Environment variable '{envVarName}' contains a non-printable or directionality-control character and cannot be used as a connection parameter override.");
-        }
-
         Logger.LogInformation("Environment variable override active for {EnvVar}", envVarName);
-        return trimmed;
+        return value.Trim();
+    }
+
+    /// <summary>
+    ///     Validates that a resolved connection parameter contains only printable ASCII characters.
+    /// </summary>
+    /// <param name="value">The resolved value to validate (from either an env var override or Command's configuration).</param>
+    /// <param name="parameterName">The name of the parameter, used in the error message.</param>
+    /// <remarks>
+    ///     None of <c>Url</c>, <c>AuthType</c>, <c>AccessId</c>, or <c>AccessKey</c> are legitimately anything
+    ///     other than printable ASCII. Rather than maintain a growing blocklist of specific problem characters
+    ///     (control characters, ANSI escape sequences, Unicode line/paragraph separators, bidirectional-override
+    ///     and zero-width/variation-selector characters have all been found, one at a time, to let a value forge
+    ///     extra log lines or render differently than its actual content in the structured log messages that
+    ///     echo these values), this allowlists the narrow range of characters that are actually legitimate and
+    ///     rejects everything else in one check. Applied uniformly to the final resolved value regardless of
+    ///     whether it came from an env var override or Command's/manifest.json's configured value, since both
+    ///     reach the same log statements and the same Akeyless API calls.
+    /// </remarks>
+    /// <exception cref="InvalidClientConfigurationException">
+    ///     Thrown if the value contains any character outside the printable ASCII range (0x20-0x7E).
+    /// </exception>
+    private static void EnsurePrintableAscii(string value, string parameterName)
+    {
+        if (value != null && value.All(c => c is >= (char)0x20 and <= (char)0x7E)) return;
+
+        throw new InvalidClientConfigurationException(
+            $"{parameterName} contains a non-printable or non-ASCII character and cannot be used.");
     }
 
     private IAkeylessApiClient InitClient(AkeylessConfiguration configurationInfo)
@@ -207,11 +207,15 @@ public class AkeylessPam : IPAMProvider
             Logger.MethodEntry();
             var basePath = ResolveEnvOverride("AKEYLESS_API_URL") ??
                            configurationInfo.Url ?? "https://api.akeyless.io";
+            EnsurePrintableAscii(basePath, "Url");
             Logger.LogDebug("Connecting to Akeyless at '{Url}'", basePath);
 
             var authType = ResolveEnvOverride("AKEYLESS_AUTH_TYPE") ?? configurationInfo.AuthType;
+            EnsurePrintableAscii(authType, "AuthType");
             accessId = ResolveEnvOverride("AKEYLESS_ACCESS_ID") ?? configurationInfo.AccessId;
+            EnsurePrintableAscii(accessId, "AccessId");
             var accessKey = ResolveEnvOverride("AKEYLESS_ACCESS_KEY") ?? configurationInfo.AccessKey;
+            EnsurePrintableAscii(accessKey, "AccessKey");
 
             // AuthType from configurationInfo already passed ValidateServerConfigurationParams, but an
             // AKEYLESS_AUTH_TYPE override bypasses that check entirely, so re-validate the resolved value

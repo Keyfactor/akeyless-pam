@@ -403,11 +403,14 @@ public class EnvironmentVariableOverrideTests
     [InlineData("env-access-id\u2029forged log line")] // Unicode PARAGRAPH SEPARATOR
     [InlineData("env-access-id[2Ktampered")] // ANSI escape sequence (ESC is a control character)
     [InlineData("env-access-id\u202Ehidden-suffix")] // Unicode RIGHT-TO-LEFT OVERRIDE (Format category)
+    [InlineData("env-access-id\uFE0Ftampered")] // Unicode Variation Selector (Nonspacing-Mark category)
     public void GetPassword_AkeylessAccessIdEnvVarHasEmbeddedControlCharacter_ThrowsInvalidClientConfigurationException(
         string maliciousValue)
     {
-        // The \n/\r-only check misses non-ASCII line-terminating separators and other control characters
-        // (e.g. ANSI escape sequences) that could equally forge or tamper with rendered log output.
+        // Non-ASCII line-terminating separators, ANSI escape sequences, bidi-override characters, and
+        // zero-width variation selectors can all equally forge or tamper with rendered log output. Rather
+        // than blocklisting each character class as it's discovered, the printable-ASCII allowlist rejects
+        // all of them (and anything else non-ASCII) in one check.
         using var _ = new EnvVarScope("AKEYLESS_ACCESS_ID", maliciousValue);
 
         var mock = new Mock<IAkeylessApiClient>();
@@ -415,6 +418,25 @@ public class EnvironmentVariableOverrideTests
 
         var ex = Assert.Throws<AggregateException>(() =>
             pam.GetPassword(Params.Instance(), Params.ValidServer(accessId: "configured-access-id")));
+
+        Assert.IsType<InvalidClientConfigurationException>(ex.InnerException);
+        mock.Verify(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public void GetPassword_ConfiguredAccessIdHasEmbeddedControlCharacter_ThrowsInvalidClientConfigurationException()
+    {
+        // The printable-ASCII allowlist is applied to the final resolved value regardless of source, so a
+        // malicious/malformed AccessId supplied via Command's server configuration (no env var override
+        // involved) is rejected too -- not just the override path. Explicitly unset the env var so an
+        // ambient AKEYLESS_ACCESS_ID on the host running the tests can't silently override it.
+        using var _ = new EnvVarScope("AKEYLESS_ACCESS_ID", null);
+
+        var mock = new Mock<IAkeylessApiClient>();
+        var pam = new AkeylessPam(_ => mock.Object);
+
+        var ex = Assert.Throws<AggregateException>(() =>
+            pam.GetPassword(Params.Instance(), Params.ValidServer(accessId: "configured-id\r\nforged log line")));
 
         Assert.IsType<InvalidClientConfigurationException>(ex.InnerException);
         mock.Verify(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
