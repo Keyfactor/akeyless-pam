@@ -140,15 +140,17 @@ public class AkeylessPam : IPAMProvider
     /// </summary>
     /// <param name="envVarName">The name of the environment variable to check.</param>
     /// <returns>
-    ///     The environment variable's value if it is set to a non-empty, non-whitespace string; otherwise, <c>null</c>
-    ///     so the caller falls back to the configured value.
+    ///     The environment variable's value, trimmed of leading/trailing whitespace, if it is set to a non-empty,
+    ///     non-whitespace string; otherwise, <c>null</c> so the caller falls back to the configured value.
     /// </returns>
     /// <remarks>
     ///     Unlike a plain <c>??</c> null-coalesce against <see cref="Environment.GetEnvironmentVariable(string)" />,
     ///     this treats an env var explicitly set to an empty or whitespace-only string the same as an unset env
     ///     var — it does not override the configured value. This avoids a misconfigured/blank environment variable
     ///     silently blanking out a valid `manifest.json`/Command portal value (e.g. `Url`, `AccessId`, `AccessKey`,
-    ///     `AuthType`).
+    ///     `AuthType`). The returned value is trimmed because env vars sourced from mounted secret files/configmaps
+    ///     commonly carry an incidental trailing newline, which would otherwise fail exact-match comparisons
+    ///     (auth type) or authentication (AccessId/AccessKey) with no indication that whitespace was the cause.
     ///     <para>
     ///         Audit trail: when an override is active, this logs which environment variable is overriding —
     ///         never the value — so an incident investigation can tell whether the effective connection
@@ -161,7 +163,7 @@ public class AkeylessPam : IPAMProvider
         if (string.IsNullOrWhiteSpace(value)) return null;
 
         Logger.LogInformation("Environment variable override active for {EnvVar}", envVarName);
-        return value;
+        return value.Trim();
     }
 
     private IAkeylessApiClient InitClient(AkeylessConfiguration configurationInfo)
@@ -171,10 +173,23 @@ public class AkeylessPam : IPAMProvider
             Logger.MethodEntry();
             var basePath = ResolveEnvOverride("AKEYLESS_API_URL") ??
                            configurationInfo.Url ?? "https://api.akeyless.io";
+            Logger.LogDebug("Connecting to Akeyless at '{Url}'", basePath);
 
             var authType = ResolveEnvOverride("AKEYLESS_AUTH_TYPE") ?? configurationInfo.AuthType;
             var accessId = ResolveEnvOverride("AKEYLESS_ACCESS_ID") ?? configurationInfo.AccessId;
             var accessKey = ResolveEnvOverride("AKEYLESS_ACCESS_KEY") ?? configurationInfo.AccessKey;
+
+            // AuthType from configurationInfo already passed ValidateServerConfigurationParams, but an
+            // AKEYLESS_AUTH_TYPE override bypasses that check entirely, so re-validate the resolved value
+            // here — otherwise an unrecognised override silently falls through to "no authentication
+            // performed" below instead of failing fast.
+            if (!AkeylessConfiguration.SupportedAuthMethods.Contains(authType))
+            {
+                Logger.LogError(
+                    "Unsupported auth type '{AuthType}' resolved for Akeyless client initialization", authType);
+                throw new InvalidClientConfigurationException(
+                    $"Invalid auth type '{authType}' specified. Supported auth types are: [{string.Join(", ", AkeylessConfiguration.SupportedAuthMethods)}].");
+            }
 
             var client = _clientFactory(basePath);
 
@@ -197,12 +212,6 @@ public class AkeylessPam : IPAMProvider
                     Logger.LogInformation(
                         "Successfully authenticated with Akeyless using AccessId '{AccessId}'",
                         accessId);
-                    break;
-
-                default:
-                    Logger.LogWarning(
-                        "No authentication performed for unrecognised auth type '{AuthType}'",
-                        authType);
                     break;
             }
 
@@ -364,7 +373,6 @@ public class AkeylessPam : IPAMProvider
         try
         {
             Logger.MethodEntry();
-            Logger.LogDebug("Connecting to Akeyless at '{Url}'", configurationInfo.Url);
             var client = InitClient(configurationInfo);
 
             switch (configurationInfo.SecretType)

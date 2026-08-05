@@ -3,6 +3,9 @@
 ## Features
 
 - **Environment variable overrides for connection parameters** — `AuthType`, `AccessId`, and `AccessKey` can now be overridden at runtime via the `AKEYLESS_AUTH_TYPE`, `AKEYLESS_ACCESS_ID`, and `AKEYLESS_ACCESS_KEY` environment variables, respectively, matching the existing `AKEYLESS_API_URL` override for the Akeyless API URL. This lets deployments control Akeyless connection details at the infrastructure/deployment level (e.g. process environment, secrets injection) instead of only via `manifest.json` or the Command portal.
+- Environment variable override values are trimmed of leading/trailing whitespace before use, so an incidental trailing newline (a common artifact of file-mounted/`envFrom` secret provisioning) no longer breaks the override.
+- An `AKEYLESS_AUTH_TYPE` override is now validated against the supported auth types before use; an unrecognized value fails fast with `InvalidClientConfigurationException` instead of silently skipping authentication and proceeding with an unauthenticated request.
+- The "Connecting to Akeyless at" debug log now reports the effective (post-override) URL rather than the pre-override configured value.
 
 # v1.0.0
 

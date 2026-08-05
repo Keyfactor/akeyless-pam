@@ -344,6 +344,28 @@ public class EnvironmentVariableOverrideTests
     }
 
     [Fact]
+    public void GetPassword_AkeylessAccessIdEnvVarHasTrailingNewline_IsTrimmedBeforeUse()
+    {
+        // A trailing newline is a common artifact of file-mounted/envFrom secret provisioning; it must not
+        // be sent to Akeyless as part of the credential.
+        using var _ = new EnvVarScope("AKEYLESS_ACCESS_ID", "env-access-id\n");
+
+        string? capturedAccessId = null;
+        var mock = new Mock<IAkeylessApiClient>();
+        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()))
+            .Callback<string, string>((accessId, _) => capturedAccessId = accessId)
+            .Returns("fake-token");
+        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
+
+        var pam = new AkeylessPam(_ => mock.Object);
+
+        pam.GetPassword(Params.Instance(), Params.ValidServer(accessId: "configured-access-id"));
+
+        Assert.Equal("env-access-id", capturedAccessId);
+    }
+
+    [Fact]
     public void GetPassword_AkeylessAccessKeyEnvVar_OverridesConfiguredAccessKey()
     {
         using var _ = new EnvVarScope("AKEYLESS_ACCESS_KEY", "env-access-key");
@@ -424,11 +446,10 @@ public class EnvironmentVariableOverrideTests
     }
 
     [Fact]
-    public void GetPassword_AkeylessAuthTypeEnvVar_OverridesConfiguredAuthType()
+    public void GetPassword_AkeylessAuthTypeEnvVarUnrecognised_ThrowsInvalidClientConfigurationException()
     {
-        // Override the configured "access_key" auth type with an unrecognised value via env var — the
-        // provider should skip authentication entirely (default/no-op branch) rather than calling Authenticate
-        // with the configured access_key credentials.
+        // Override the configured "access_key" auth type with an unrecognised value via env var — this must
+        // fail fast rather than silently skipping authentication and proceeding with an unauthenticated request.
         using var _ = new EnvVarScope("AKEYLESS_AUTH_TYPE", "unrecognised_env_auth_type");
 
         var mock = new Mock<IAkeylessApiClient>();
@@ -437,8 +458,10 @@ public class EnvironmentVariableOverrideTests
 
         var pam = new AkeylessPam(_ => mock.Object);
 
-        pam.GetPassword(Params.Instance(), Params.ValidServer(authType: "access_key"));
+        var ex = Assert.Throws<AggregateException>(() =>
+            pam.GetPassword(Params.Instance(), Params.ValidServer(authType: "access_key")));
 
+        Assert.IsType<InvalidClientConfigurationException>(ex.InnerException);
         mock.Verify(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
@@ -480,6 +503,25 @@ public class EnvironmentVariableOverrideTests
     public void GetPassword_AkeylessAuthTypeEnvVarWhitespaceOnly_FallsBackToConfiguredAuthType()
     {
         using var _ = new EnvVarScope("AKEYLESS_AUTH_TYPE", "   ");
+
+        var mock = new Mock<IAkeylessApiClient>();
+        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>())).Returns("fake-token");
+        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
+
+        var pam = new AkeylessPam(_ => mock.Object);
+
+        pam.GetPassword(Params.Instance(), Params.ValidServer(authType: "access_key"));
+
+        mock.Verify(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public void GetPassword_AkeylessAuthTypeEnvVarHasTrailingNewline_IsTrimmedBeforeUse()
+    {
+        // A trailing newline (e.g. from file-mounted/envFrom secret provisioning) must not cause the
+        // resolved auth type to fail the "access_key" match and fall into the unsupported-auth-type path.
+        using var _ = new EnvVarScope("AKEYLESS_AUTH_TYPE", "access_key\n");
 
         var mock = new Mock<IAkeylessApiClient>();
         mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>())).Returns("fake-token");
