@@ -190,10 +190,16 @@ public class AkeylessPam : IPAMProvider
     /// <exception cref="InvalidClientConfigurationException">
     ///     Thrown if the value contains any character outside the printable ASCII range (0x20-0x7E).
     /// </exception>
-    private static void EnsurePrintableAscii(string value, string parameterName)
+    private void EnsurePrintableAscii(string value, string parameterName)
     {
         if (value != null && value.All(c => c is >= (char)0x20 and <= (char)0x7E)) return;
 
+        // Logged before throwing, like every other validation failure in this class (ValidateRequiredParameter,
+        // ValidateAuthTypeAccessKey, the unsupported-auth-type checks, model validation) — without this, a
+        // rejected log-injection/spoofing attempt would leave no audit trail at all, defeating the point of
+        // having caught it. The value itself is never logged, only the parameter name.
+        Logger.LogError(
+            "{ParameterName} contains a non-printable or non-ASCII character; refusing to use it", parameterName);
         throw new InvalidClientConfigurationException(
             $"{parameterName} contains a non-printable or non-ASCII character and cannot be used.");
     }
