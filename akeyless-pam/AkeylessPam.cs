@@ -8,6 +8,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -161,7 +162,8 @@ public class AkeylessPam : IPAMProvider
     ///     </para>
     /// </remarks>
     /// <exception cref="InvalidClientConfigurationException">
-    ///     Thrown if the environment variable's trimmed value still contains an embedded line break.
+    ///     Thrown if the environment variable's trimmed value still contains an embedded control character or
+    ///     line/paragraph separator.
     /// </exception>
     private string ResolveEnvOverride(string envVarName)
     {
@@ -169,13 +171,18 @@ public class AkeylessPam : IPAMProvider
         if (string.IsNullOrWhiteSpace(value)) return null;
 
         var trimmed = value.Trim();
-        if (trimmed.Contains('\n') || trimmed.Contains('\r'))
+        // Reject by Unicode category rather than a \n/\r blocklist — this also catches ANSI escape
+        // sequences (ESC is a control character), NUL/form-feed/vertical-tab, and the Unicode
+        // line/paragraph separators (U+2028/U+2029), any of which could otherwise forge an extra
+        // rendered line in the log messages that echo the resolved value.
+        if (trimmed.Any(c => char.IsControl(c) ||
+                              char.GetUnicodeCategory(c) is UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator))
         {
             Logger.LogError(
-                "Environment variable {EnvVar} contains an embedded line break; refusing to use it as an override",
+                "Environment variable {EnvVar} contains an embedded control character or line separator; refusing to use it as an override",
                 envVarName);
             throw new InvalidClientConfigurationException(
-                $"Environment variable '{envVarName}' contains an embedded line break and cannot be used as a connection parameter override.");
+                $"Environment variable '{envVarName}' contains an embedded control character or line separator and cannot be used as a connection parameter override.");
         }
 
         Logger.LogInformation("Environment variable override active for {EnvVar}", envVarName);
