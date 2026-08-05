@@ -5,6 +5,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions
 // and limitations under the License.
 
+using akeyless.Client;
 using Keyfactor.Extensions.Pam.Akeyless;
 using Moq;
 using Xunit;
@@ -126,6 +127,21 @@ public class AuthenticationTests
             pam.GetPassword(Params.Instance(), Params.ValidServer()));
 
         Assert.IsType<InvalidTokenException>(ex.InnerException);
+    }
+
+    [Fact]
+    public void GetPassword_AuthenticateThrowsApiException_WrapsAsInvalidClientConfigurationException()
+    {
+        var mock = new Mock<IAkeylessApiClient>();
+        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()))
+            .Throws(new ApiException(401, "Unauthorized"));
+
+        var pam = new AkeylessPam(_ => mock.Object);
+
+        var ex = Assert.Throws<AggregateException>(() =>
+            pam.GetPassword(Params.Instance(), Params.ValidServer()));
+
+        Assert.IsType<InvalidClientConfigurationException>(ex.InnerException);
     }
 
     [Fact]
@@ -363,6 +379,23 @@ public class EnvironmentVariableOverrideTests
         pam.GetPassword(Params.Instance(), Params.ValidServer(accessId: "configured-access-id"));
 
         Assert.Equal("env-access-id", capturedAccessId);
+    }
+
+    [Fact]
+    public void GetPassword_AkeylessAccessIdEnvVarHasEmbeddedLineBreak_ThrowsInvalidClientConfigurationException()
+    {
+        // An embedded (non-trailing) line break survives Trim() and would otherwise flow unchanged into the
+        // structured log messages that echo AccessId, forging extra log lines. It must be rejected outright.
+        using var _ = new EnvVarScope("AKEYLESS_ACCESS_ID", "env-access-id\nforged log line");
+
+        var mock = new Mock<IAkeylessApiClient>();
+        var pam = new AkeylessPam(_ => mock.Object);
+
+        var ex = Assert.Throws<AggregateException>(() =>
+            pam.GetPassword(Params.Instance(), Params.ValidServer(accessId: "configured-access-id")));
+
+        Assert.IsType<InvalidClientConfigurationException>(ex.InnerException);
+        mock.Verify(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]

@@ -151,23 +151,43 @@ public class AkeylessPam : IPAMProvider
     ///     `AuthType`). The returned value is trimmed because env vars sourced from mounted secret files/configmaps
     ///     commonly carry an incidental trailing newline, which would otherwise fail exact-match comparisons
     ///     (auth type) or authentication (AccessId/AccessKey) with no indication that whitespace was the cause.
+    ///     An override that still contains an embedded line break after trimming is rejected outright — none of
+    ///     the overridable parameters are legitimately multi-line, and letting one through would let it forge
+    ///     extra lines in the structured log messages that echo the resolved value (e.g. AccessId, AuthType).
     ///     <para>
     ///         Audit trail: when an override is active, this logs which environment variable is overriding —
     ///         never the value — so an incident investigation can tell whether the effective connection
     ///         parameter used at runtime matches Command's recorded configuration.
     ///     </para>
     /// </remarks>
+    /// <exception cref="InvalidClientConfigurationException">
+    ///     Thrown if the environment variable's trimmed value still contains an embedded line break.
+    /// </exception>
     private string ResolveEnvOverride(string envVarName)
     {
         var value = Environment.GetEnvironmentVariable(envVarName);
         if (string.IsNullOrWhiteSpace(value)) return null;
 
+        var trimmed = value.Trim();
+        if (trimmed.Contains('\n') || trimmed.Contains('\r'))
+        {
+            Logger.LogError(
+                "Environment variable {EnvVar} contains an embedded line break; refusing to use it as an override",
+                envVarName);
+            throw new InvalidClientConfigurationException(
+                $"Environment variable '{envVarName}' contains an embedded line break and cannot be used as a connection parameter override.");
+        }
+
         Logger.LogInformation("Environment variable override active for {EnvVar}", envVarName);
-        return value.Trim();
+        return trimmed;
     }
 
     private IAkeylessApiClient InitClient(AkeylessConfiguration configurationInfo)
     {
+        // Hoisted above the try block (rather than declared with the other resolved values inside it) so the
+        // ApiException catch below can still report which AccessId the failed authentication attempt used —
+        // that identity may differ from Command's recorded configuration when an env var override is active.
+        string accessId = null;
         try
         {
             Logger.MethodEntry();
@@ -176,7 +196,7 @@ public class AkeylessPam : IPAMProvider
             Logger.LogDebug("Connecting to Akeyless at '{Url}'", basePath);
 
             var authType = ResolveEnvOverride("AKEYLESS_AUTH_TYPE") ?? configurationInfo.AuthType;
-            var accessId = ResolveEnvOverride("AKEYLESS_ACCESS_ID") ?? configurationInfo.AccessId;
+            accessId = ResolveEnvOverride("AKEYLESS_ACCESS_ID") ?? configurationInfo.AccessId;
             var accessKey = ResolveEnvOverride("AKEYLESS_ACCESS_KEY") ?? configurationInfo.AccessKey;
 
             // AuthType from configurationInfo already passed ValidateServerConfigurationParams, but an
@@ -221,7 +241,9 @@ public class AkeylessPam : IPAMProvider
         {
             // NOTE: ex.Message is intentionally excluded — ApiException error content may echo back
             // portions of the auth request body, including credentials.
-            Logger.LogError(ex, "Akeyless API exception during authentication (HTTP {StatusCode})", ex.ErrorCode);
+            Logger.LogError(ex,
+                "Akeyless API exception during authentication (HTTP {StatusCode}) for AccessId '{AccessId}'",
+                ex.ErrorCode, accessId);
             throw new InvalidClientConfigurationException(
                 $"Unable to authenticate to Akeyless API (HTTP {ex.ErrorCode}). Check AccessId and AccessKey configuration.");
         }
