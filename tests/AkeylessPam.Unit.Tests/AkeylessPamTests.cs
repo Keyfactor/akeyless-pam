@@ -402,6 +402,7 @@ public class EnvironmentVariableOverrideTests
     [InlineData("env-access-id\u2028forged log line")] // Unicode LINE SEPARATOR
     [InlineData("env-access-id\u2029forged log line")] // Unicode PARAGRAPH SEPARATOR
     [InlineData("env-access-id[2Ktampered")] // ANSI escape sequence (ESC is a control character)
+    [InlineData("env-access-id\u202Ehidden-suffix")] // Unicode RIGHT-TO-LEFT OVERRIDE (Format category)
     public void GetPassword_AkeylessAccessIdEnvVarHasEmbeddedControlCharacter_ThrowsInvalidClientConfigurationException(
         string maliciousValue)
     {

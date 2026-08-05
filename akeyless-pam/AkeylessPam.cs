@@ -162,8 +162,8 @@ public class AkeylessPam : IPAMProvider
     ///     </para>
     /// </remarks>
     /// <exception cref="InvalidClientConfigurationException">
-    ///     Thrown if the environment variable's trimmed value still contains an embedded control character or
-    ///     line/paragraph separator.
+    ///     Thrown if the environment variable's trimmed value still contains a non-printable or
+    ///     directionality-control character.
     /// </exception>
     private string ResolveEnvOverride(string envVarName)
     {
@@ -171,18 +171,25 @@ public class AkeylessPam : IPAMProvider
         if (string.IsNullOrWhiteSpace(value)) return null;
 
         var trimmed = value.Trim();
-        // Reject by Unicode category rather than a \n/\r blocklist — this also catches ANSI escape
-        // sequences (ESC is a control character), NUL/form-feed/vertical-tab, and the Unicode
-        // line/paragraph separators (U+2028/U+2029), any of which could otherwise forge an extra
-        // rendered line in the log messages that echo the resolved value.
-        if (trimmed.Any(c => char.IsControl(c) ||
-                              char.GetUnicodeCategory(c) is UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator))
+        // Reject by Unicode category rather than a \n/\r blocklist. This covers ANSI escape sequences
+        // and NUL/form-feed/vertical-tab (Control), the Unicode line/paragraph separators U+2028/U+2029
+        // (LineSeparator/ParagraphSeparator), and bidirectional-override/zero-width characters such as
+        // U+202E RIGHT-TO-LEFT OVERRIDE (Format) — any of which could otherwise forge an extra rendered
+        // log line or make the value displayed in a log/terminal differ from its actual content.
+        if (trimmed.Any(c => char.GetUnicodeCategory(c) is
+                UnicodeCategory.Control or
+                UnicodeCategory.Format or
+                UnicodeCategory.Surrogate or
+                UnicodeCategory.PrivateUse or
+                UnicodeCategory.OtherNotAssigned or
+                UnicodeCategory.LineSeparator or
+                UnicodeCategory.ParagraphSeparator))
         {
             Logger.LogError(
-                "Environment variable {EnvVar} contains an embedded control character or line separator; refusing to use it as an override",
+                "Environment variable {EnvVar} contains a non-printable or directionality-control character; refusing to use it as an override",
                 envVarName);
             throw new InvalidClientConfigurationException(
-                $"Environment variable '{envVarName}' contains an embedded control character or line separator and cannot be used as a connection parameter override.");
+                $"Environment variable '{envVarName}' contains a non-printable or directionality-control character and cannot be used as a connection parameter override.");
         }
 
         Logger.LogInformation("Environment variable override active for {EnvVar}", envVarName);
@@ -246,9 +253,12 @@ public class AkeylessPam : IPAMProvider
         }
         catch (ApiException ex)
         {
-            // NOTE: ex.Message is intentionally excluded — ApiException error content may echo back
-            // portions of the auth request body, including credentials.
-            Logger.LogError(ex,
+            // NOTE: the exception object itself (not just ex.Message) is intentionally excluded from
+            // the log call — ApiException error content may echo back portions of the auth request
+            // body, including credentials, and most ILogger providers render an attached exception's
+            // Message/ToString() regardless of the message template, so passing `ex` here would defeat
+            // that exclusion.
+            Logger.LogError(
                 "Akeyless API exception during authentication (HTTP {StatusCode}) for AccessId '{AccessId}'",
                 ex.ErrorCode, accessId);
             throw new InvalidClientConfigurationException(
