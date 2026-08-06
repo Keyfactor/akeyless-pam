@@ -440,30 +440,14 @@ public class EnvironmentVariableOverrideTests
         Assert.Equal("env-access-id", capturedAccessId);
     }
 
-    [Fact]
-    public void GetPassword_AkeylessAccessIdEnvVarHasEmbeddedLineBreak_ThrowsInvalidClientConfigurationException()
-    {
-        // An embedded (non-trailing) line break survives Trim() and would otherwise flow unchanged into the
-        // structured log messages that echo AccessId, forging extra log lines. It must be rejected outright.
-        using var _ = new EnvVarScope("AKEYLESS_ACCESS_ID", "env-access-id\nforged log line");
-
-        var mock = new Mock<IAkeylessApiClient>();
-        var pam = new AkeylessPam(_ => mock.Object);
-
-        var ex = Assert.Throws<AggregateException>(() =>
-            pam.GetPassword(Params.Instance(), Params.ValidServer(accessId: "configured-access-id")));
-
-        Assert.IsType<InvalidClientConfigurationException>(ex.InnerException);
-        mock.Verify(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-    }
-
     [Theory]
+    [InlineData("env-access-id\nforged log line")] // embedded LF, survives Trim()
     [InlineData("env-access-id\u2028forged log line")] // Unicode LINE SEPARATOR
     [InlineData("env-access-id\u2029forged log line")] // Unicode PARAGRAPH SEPARATOR
     [InlineData("env-access-id[2Ktampered")] // ANSI escape sequence (ESC is a control character)
     [InlineData("env-access-id\u202Ehidden-suffix")] // Unicode RIGHT-TO-LEFT OVERRIDE (Format category)
     [InlineData("env-access-id\uFE0Ftampered")] // Unicode Variation Selector (Nonspacing-Mark category)
-    public void GetPassword_AkeylessAccessIdEnvVarHasEmbeddedControlCharacter_ThrowsInvalidClientConfigurationException(
+    public void GetPassword_AkeylessAccessIdEnvVarHasEmbeddedLineBreakOrControlCharacter_ThrowsInvalidClientConfigurationException(
         string maliciousValue)
     {
         // Non-ASCII line-terminating separators, ANSI escape sequences, bidi-override characters, and
