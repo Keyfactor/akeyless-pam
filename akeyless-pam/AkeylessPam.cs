@@ -246,27 +246,24 @@ public class AkeylessPam : IPAMProvider
 
             var client = _clientFactory(basePath);
 
-            switch (authType)
+            // authType is provably "access_key" here — the SupportedAuthMethods guard clause above
+            // already rejected anything else, and that's currently the only supported value.
+            Logger.LogDebug("Authenticating with Akeyless using access_key auth, AccessId: '{AccessId}'",
+                accessId);
+            var token = client.Authenticate(accessId, accessKey);
+
+            if (string.IsNullOrEmpty(token))
             {
-                case "access_key":
-                    Logger.LogDebug("Authenticating with Akeyless using access_key auth, AccessId: '{AccessId}'",
-                        accessId);
-                    var token = client.Authenticate(accessId, accessKey);
-
-                    if (string.IsNullOrEmpty(token))
-                    {
-                        Logger.LogError(
-                            "Authentication failed: unable to obtain access token from Akeyless for AccessId '{AccessId}'",
-                            accessId);
-                        throw new InvalidTokenException("Unable to obtain access token from Akeyless server");
-                    }
-
-                    AuthToken = token;
-                    Logger.LogInformation(
-                        "Successfully authenticated with Akeyless using AccessId '{AccessId}'",
-                        accessId);
-                    break;
+                Logger.LogError(
+                    "Authentication failed: unable to obtain access token from Akeyless for AccessId '{AccessId}'",
+                    accessId);
+                throw new InvalidTokenException("Unable to obtain access token from Akeyless server");
             }
+
+            AuthToken = token;
+            Logger.LogInformation(
+                "Successfully authenticated with Akeyless using AccessId '{AccessId}'",
+                accessId);
 
             return client;
         }
