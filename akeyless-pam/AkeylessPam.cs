@@ -232,8 +232,9 @@ public class AkeylessPam : IPAMProvider
         try
         {
             Logger.MethodEntry();
-            var basePath = ResolveAndValidate("AKEYLESS_API_URL",
-                configurationInfo.Url ?? AkeylessConstants.DefaultAkeylessApiUrl, "Url");
+            // configurationInfo.Url is always populated by BuildAkeylessConfiguration (which owns the
+            // default-URL fallback), so no second fallback is needed here.
+            var basePath = ResolveAndValidate("AKEYLESS_API_URL", configurationInfo.Url, "Url");
             Logger.LogDebug("Connecting to Akeyless at '{Url}'", basePath);
 
             var authType = ResolveAndValidate("AKEYLESS_AUTH_TYPE", configurationInfo.AuthType, "AuthType");
