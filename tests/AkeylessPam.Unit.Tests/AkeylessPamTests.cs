@@ -166,26 +166,95 @@ public class AuthenticationTests
     }
 }
 
-/// <summary>
-/// Sets an environment variable for the duration of the test and restores the prior value (or clears it,
-/// if it was previously unset) on dispose. Ensures env var overrides used to test one PAM instance
-/// don't leak into other tests or other test runs.
-/// </summary>
-internal sealed class EnvVarScope : IDisposable
+public class ConfiguredValueSanitizationTests
 {
-    private readonly string _name;
-    private readonly string? _previousValue;
+    // Mirrors the env-var-override trimming tests: Command-portal/manifest.json-configured values
+    // commonly carry an incidental trailing newline too (e.g. from hand-editing JSON or a paste with a
+    // stray line terminator), and BuildAkeylessConfiguration must trim it the same way
+    // ResolveEnvOverride trims env-var-sourced values, rather than hard-failing on a previously-benign
+    // artifact.
 
-    public EnvVarScope(string name, string? value)
+    [Fact]
+    public void GetPassword_ConfiguredUrlHasTrailingNewline_IsTrimmedBeforeUse()
     {
-        _name = name;
-        _previousValue = Environment.GetEnvironmentVariable(name);
-        Environment.SetEnvironmentVariable(name, value);
+        // Cleared, not just left alone, so this test is hermetic against a real AKEYLESS_API_URL
+        // already present in the ambient environment (e.g. a developer's shell).
+        using var _ = new EnvVarScope("AKEYLESS_API_URL", null);
+
+        string? capturedBasePath = null;
+        var mock = new Mock<IAkeylessApiClient>();
+        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("fake-token");
+        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
+
+        var pam = new AkeylessPam(basePath =>
+        {
+            capturedBasePath = basePath;
+            return mock.Object;
+        });
+
+        pam.GetPassword(Params.Instance(), Params.ValidServer(url: "https://api.akeyless.io\n"));
+
+        Assert.Equal("https://api.akeyless.io", capturedBasePath);
     }
 
-    public void Dispose()
+    [Fact]
+    public void GetPassword_ConfiguredAuthTypeHasTrailingNewline_IsTrimmedBeforeUse()
     {
-        Environment.SetEnvironmentVariable(_name, _previousValue);
+        using var _ = new EnvVarScope("AKEYLESS_AUTH_TYPE", null);
+
+        var mock = new Mock<IAkeylessApiClient>();
+        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("fake-token");
+        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
+
+        var pam = new AkeylessPam(_ => mock.Object);
+
+        pam.GetPassword(Params.Instance(), Params.ValidServer(authType: "access_key\n"));
+
+        mock.Verify(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public void GetPassword_ConfiguredAccessIdHasTrailingNewline_IsTrimmedBeforeUse()
+    {
+        using var _ = new EnvVarScope("AKEYLESS_ACCESS_ID", null);
+
+        string? capturedAccessId = null;
+        var mock = new Mock<IAkeylessApiClient>();
+        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()))
+            .Callback<string, string>((accessId, _) => capturedAccessId = accessId)
+            .Returns("fake-token");
+        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
+
+        var pam = new AkeylessPam(_ => mock.Object);
+
+        pam.GetPassword(Params.Instance(), Params.ValidServer(accessId: "configured-access-id\n"));
+
+        Assert.Equal("configured-access-id", capturedAccessId);
+    }
+
+    [Fact]
+    public void GetPassword_ConfiguredAccessKeyHasTrailingNewline_IsTrimmedBeforeUse()
+    {
+        using var _ = new EnvVarScope("AKEYLESS_ACCESS_KEY", null);
+
+        string? capturedAccessKey = null;
+        var mock = new Mock<IAkeylessApiClient>();
+        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()))
+            .Callback<string, string>((_, accessKey) => capturedAccessKey = accessKey)
+            .Returns("fake-token");
+        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
+
+        var pam = new AkeylessPam(_ => mock.Object);
+
+        pam.GetPassword(Params.Instance(), Params.ValidServer(accessKey: "configured-access-key\n"));
+
+        Assert.Equal("configured-access-key", capturedAccessKey);
     }
 }
 

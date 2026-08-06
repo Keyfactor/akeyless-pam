@@ -224,8 +224,8 @@ public class AkeylessPam : IPAMProvider
         try
         {
             Logger.MethodEntry();
-            var basePath = ResolveAndValidate("AKEYLESS_API_URL", configurationInfo.Url ?? "https://api.akeyless.io",
-                "Url");
+            var basePath = ResolveAndValidate("AKEYLESS_API_URL",
+                configurationInfo.Url ?? AkeylessConstants.DefaultAkeylessApiUrl, "Url");
             Logger.LogDebug("Connecting to Akeyless at '{Url}'", basePath);
 
             var authType = ResolveAndValidate("AKEYLESS_AUTH_TYPE", configurationInfo.AuthType, "AuthType");
@@ -637,10 +637,15 @@ public class AkeylessPam : IPAMProvider
                 authType = "access_key";
             }
 
+            authType = authType.Trim();
+
             var config = new AkeylessConfiguration
             {
+                // Trimmed like ResolveEnvOverride's env-var values are — Command-portal/manifest.json
+                // values commonly carry an incidental trailing newline too, and this PR's own hardening
+                // must not turn that previously-benign artifact into a hard configuration failure.
                 Url = connectionConfiguration.GetValueOrDefault(AkeylessConfiguration.AKEYLESS_API_URL,
-                    AkeylessConstants.DefaultAkeylessApiUrl),
+                    AkeylessConstants.DefaultAkeylessApiUrl).Trim(),
                 AuthType = authType
             };
             // Validated here, before the first log statement that echoes these values, rather than relying
@@ -657,8 +662,8 @@ public class AkeylessPam : IPAMProvider
                     Logger.LogDebug("Implicit auth type configured; credentials expected via environment variables");
                     break;
                 case "access_key":
-                    config.AccessId = connectionConfiguration[AkeylessConfiguration.ACCESS_ID];
-                    config.AccessKey = connectionConfiguration[AkeylessConfiguration.ACCESS_KEY];
+                    config.AccessId = connectionConfiguration[AkeylessConfiguration.ACCESS_ID].Trim();
+                    config.AccessKey = connectionConfiguration[AkeylessConfiguration.ACCESS_KEY].Trim();
                     EnsurePrintableAscii(config.AccessId, "AccessId");
                     EnsurePrintableAscii(config.AccessKey, "AccessKey");
                     // NOTE: AccessId logged (not secret), AccessKey intentionally omitted.
