@@ -204,6 +204,17 @@ public class AkeylessPam : IPAMProvider
             $"{parameterName} contains a non-printable or non-ASCII character and cannot be used.");
     }
 
+    /// <summary>
+    ///     Resolves a connection parameter from its env var override (if active) or its configured value, then
+    ///     validates the result via <see cref="EnsurePrintableAscii" />.
+    /// </summary>
+    private string ResolveAndValidate(string envVarName, string configuredValue, string parameterName)
+    {
+        var value = ResolveEnvOverride(envVarName) ?? configuredValue;
+        EnsurePrintableAscii(value, parameterName);
+        return value;
+    }
+
     private IAkeylessApiClient InitClient(AkeylessConfiguration configurationInfo)
     {
         // Hoisted above the try block (rather than declared with the other resolved values inside it) so the
@@ -213,17 +224,13 @@ public class AkeylessPam : IPAMProvider
         try
         {
             Logger.MethodEntry();
-            var basePath = ResolveEnvOverride("AKEYLESS_API_URL") ??
-                           configurationInfo.Url ?? "https://api.akeyless.io";
-            EnsurePrintableAscii(basePath, "Url");
+            var basePath = ResolveAndValidate("AKEYLESS_API_URL", configurationInfo.Url ?? "https://api.akeyless.io",
+                "Url");
             Logger.LogDebug("Connecting to Akeyless at '{Url}'", basePath);
 
-            var authType = ResolveEnvOverride("AKEYLESS_AUTH_TYPE") ?? configurationInfo.AuthType;
-            EnsurePrintableAscii(authType, "AuthType");
-            accessId = ResolveEnvOverride("AKEYLESS_ACCESS_ID") ?? configurationInfo.AccessId;
-            EnsurePrintableAscii(accessId, "AccessId");
-            var accessKey = ResolveEnvOverride("AKEYLESS_ACCESS_KEY") ?? configurationInfo.AccessKey;
-            EnsurePrintableAscii(accessKey, "AccessKey");
+            var authType = ResolveAndValidate("AKEYLESS_AUTH_TYPE", configurationInfo.AuthType, "AuthType");
+            accessId = ResolveAndValidate("AKEYLESS_ACCESS_ID", configurationInfo.AccessId, "AccessId");
+            var accessKey = ResolveAndValidate("AKEYLESS_ACCESS_KEY", configurationInfo.AccessKey, "AccessKey");
 
             // AuthType from configurationInfo already passed ValidateServerConfigurationParams, but an
             // AKEYLESS_AUTH_TYPE override bypasses that check entirely, so re-validate the resolved value
