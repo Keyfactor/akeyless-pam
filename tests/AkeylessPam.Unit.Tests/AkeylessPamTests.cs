@@ -256,6 +256,51 @@ public class ConfiguredValueSanitizationTests
 
         Assert.Equal("configured-access-key", capturedAccessKey);
     }
+
+    [Fact]
+    public void GetPassword_ConfiguredAuthTypeKeyPresentButNull_DefaultsToAccessKeyInsteadOfThrowingNullReferenceException()
+    {
+        using var _ = new EnvVarScope("AKEYLESS_AUTH_TYPE", null);
+
+        var mock = new Mock<IAkeylessApiClient>();
+        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("fake-token");
+        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
+
+        var pam = new AkeylessPam(_ => mock.Object);
+        var server = Params.ValidServer();
+        server["AuthType"] = null!; // key present, value null — legal for Dictionary<string, string>
+
+        pam.GetPassword(Params.Instance(), server);
+
+        mock.Verify(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public void GetPassword_ConfiguredUrlKeyPresentButNull_FallsBackToDefaultInsteadOfThrowingNullReferenceException()
+    {
+        using var _ = new EnvVarScope("AKEYLESS_API_URL", null);
+
+        string? capturedBasePath = null;
+        var mock = new Mock<IAkeylessApiClient>();
+        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("fake-token");
+        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
+
+        var pam = new AkeylessPam(basePath =>
+        {
+            capturedBasePath = basePath;
+            return mock.Object;
+        });
+        var server = Params.ValidServer();
+        server["Url"] = null!; // key present, value null — legal for Dictionary<string, string>
+
+        pam.GetPassword(Params.Instance(), server);
+
+        Assert.Equal("https://api.akeyless.io", capturedBasePath);
+    }
 }
 
 public class EnvironmentVariableOverrideTests

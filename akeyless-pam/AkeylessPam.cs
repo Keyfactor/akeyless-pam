@@ -159,13 +159,21 @@ public class AkeylessPam : IPAMProvider
     ///         configured value, when no override is active) once the caller has settled on the final value to
     ///         use, so the same content guarantee applies regardless of which source it came from.
     ///     </para>
+    ///     <para>
+    ///         Logged at Warning, not Information: a host that already has one of these AKEYLESS_-prefixed
+    ///         variables set for an unrelated reason (e.g. a co-located Akeyless CLI install using the same
+    ///         conventional variable names) will silently authenticate with a different identity than Command's
+    ///         recorded configuration after upgrading to a version that reads it — with zero configuration
+    ///         change on Command's side. That's a connection-identity change, not routine operation, so it
+    ///         should surface to an operator without them having to go looking for it at Information level.
+    ///     </para>
     /// </remarks>
     private string ResolveEnvOverride(string envVarName)
     {
         var value = Environment.GetEnvironmentVariable(envVarName);
         if (string.IsNullOrWhiteSpace(value)) return null;
 
-        Logger.LogInformation("Environment variable override active for {EnvVar}", envVarName);
+        Logger.LogWarning("Environment variable override active for {EnvVar}", envVarName);
         return value.Trim();
     }
 
@@ -629,7 +637,11 @@ public class AkeylessPam : IPAMProvider
                     "Akeyless configuration is invalid, please review server logs.");
             }
 
-            if (!connectionConfiguration.TryGetValue(AkeylessConfiguration.AUTH_TYPE, out var authType))
+            // string.IsNullOrEmpty (not just TryGetValue's presence check) so a dictionary entry explicitly
+            // bound to null - as well as an absent key - defaults to 'access_key' instead of crashing the
+            // .Trim() call below with a NullReferenceException.
+            if (!connectionConfiguration.TryGetValue(AkeylessConfiguration.AUTH_TYPE, out var authType) ||
+                string.IsNullOrEmpty(authType))
             {
                 Logger.LogWarning(
                     "'{AuthType}' parameter not provided; defaulting to 'access_key'",
@@ -639,13 +651,17 @@ public class AkeylessPam : IPAMProvider
 
             authType = authType.Trim();
 
+            // Same null-safety as above: GetValueOrDefault only substitutes the fallback for an absent key,
+            // not one explicitly bound to null, so the null case is handled before .Trim() rather than by it.
+            var configuredUrl = connectionConfiguration.GetValueOrDefault(AkeylessConfiguration.AKEYLESS_API_URL);
+
             var config = new AkeylessConfiguration
             {
                 // Trimmed like ResolveEnvOverride's env-var values are — Command-portal/manifest.json
                 // values commonly carry an incidental trailing newline too, and this PR's own hardening
                 // must not turn that previously-benign artifact into a hard configuration failure.
-                Url = connectionConfiguration.GetValueOrDefault(AkeylessConfiguration.AKEYLESS_API_URL,
-                    AkeylessConstants.DefaultAkeylessApiUrl).Trim(),
+                Url = (string.IsNullOrEmpty(configuredUrl) ? AkeylessConstants.DefaultAkeylessApiUrl : configuredUrl)
+                    .Trim(),
                 AuthType = authType
             };
             // Validated here, before the first log statement that echoes these values, rather than relying
