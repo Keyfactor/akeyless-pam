@@ -660,7 +660,7 @@ public class AkeylessPam : IPAMProvider
                 // Trimmed like ResolveEnvOverride's env-var values are — Command-portal/manifest.json
                 // values commonly carry an incidental trailing newline too, and this PR's own hardening
                 // must not turn that previously-benign artifact into a hard configuration failure.
-                Url = (string.IsNullOrEmpty(configuredUrl) ? AkeylessConstants.DefaultAkeylessApiUrl : configuredUrl)
+                Url = (string.IsNullOrWhiteSpace(configuredUrl) ? AkeylessConstants.DefaultAkeylessApiUrl : configuredUrl)
                     .Trim(),
                 AuthType = authType
             };

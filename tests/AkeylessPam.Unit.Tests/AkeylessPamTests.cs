@@ -301,6 +301,29 @@ public class ConfiguredValueSanitizationTests
 
         Assert.Equal("https://api.akeyless.io", capturedBasePath);
     }
+
+    [Fact]
+    public void GetPassword_ConfiguredUrlIsWhitespaceOnly_FallsBackToDefaultInsteadOfEmptyBasePath()
+    {
+        using var _ = new EnvVarScope("AKEYLESS_API_URL", null);
+
+        string? capturedBasePath = null;
+        var mock = new Mock<IAkeylessApiClient>();
+        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("fake-token");
+        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
+
+        var pam = new AkeylessPam(basePath =>
+        {
+            capturedBasePath = basePath;
+            return mock.Object;
+        });
+
+        pam.GetPassword(Params.Instance(), Params.ValidServer(url: "   "));
+
+        Assert.Equal("https://api.akeyless.io", capturedBasePath);
+    }
 }
 
 public class EnvironmentVariableOverrideTests
@@ -327,54 +350,13 @@ public class EnvironmentVariableOverrideTests
         Assert.Equal("https://env-override.akeyless.io", capturedBasePath);
     }
 
-    [Fact]
-    public void GetPassword_AkeylessApiUrlEnvVarUnset_FallsBackToConfiguredUrl()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GetPassword_AkeylessApiUrlEnvVarUnsetOrBlank_FallsBackToConfiguredUrl(string? envValue)
     {
-        using var _ = new EnvVarScope("AKEYLESS_API_URL", null);
-
-        string? capturedBasePath = null;
-        var mock = new Mock<IAkeylessApiClient>();
-        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>())).Returns("fake-token");
-        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
-            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
-
-        var pam = new AkeylessPam(basePath =>
-        {
-            capturedBasePath = basePath;
-            return mock.Object;
-        });
-
-        pam.GetPassword(Params.Instance(), Params.ValidServer(url: "https://configured.akeyless.io"));
-
-        Assert.Equal("https://configured.akeyless.io", capturedBasePath);
-    }
-
-    [Fact]
-    public void GetPassword_AkeylessApiUrlEnvVarEmptyString_FallsBackToConfiguredUrl()
-    {
-        using var _ = new EnvVarScope("AKEYLESS_API_URL", "");
-
-        string? capturedBasePath = null;
-        var mock = new Mock<IAkeylessApiClient>();
-        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>())).Returns("fake-token");
-        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
-            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
-
-        var pam = new AkeylessPam(basePath =>
-        {
-            capturedBasePath = basePath;
-            return mock.Object;
-        });
-
-        pam.GetPassword(Params.Instance(), Params.ValidServer(url: "https://configured.akeyless.io"));
-
-        Assert.Equal("https://configured.akeyless.io", capturedBasePath);
-    }
-
-    [Fact]
-    public void GetPassword_AkeylessApiUrlEnvVarWhitespaceOnly_FallsBackToConfiguredUrl()
-    {
-        using var _ = new EnvVarScope("AKEYLESS_API_URL", "   ");
+        using var _ = new EnvVarScope("AKEYLESS_API_URL", envValue);
 
         string? capturedBasePath = null;
         var mock = new Mock<IAkeylessApiClient>();
@@ -413,50 +395,13 @@ public class EnvironmentVariableOverrideTests
         Assert.Equal("env-access-id", capturedAccessId);
     }
 
-    [Fact]
-    public void GetPassword_AkeylessAccessIdEnvVarUnset_FallsBackToConfiguredAccessId()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GetPassword_AkeylessAccessIdEnvVarUnsetOrBlank_FallsBackToConfiguredAccessId(string? envValue)
     {
-        using var _ = new EnvVarScope("AKEYLESS_ACCESS_ID", null);
-
-        string? capturedAccessId = null;
-        var mock = new Mock<IAkeylessApiClient>();
-        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()))
-            .Callback<string, string>((accessId, _) => capturedAccessId = accessId)
-            .Returns("fake-token");
-        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
-            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
-
-        var pam = new AkeylessPam(_ => mock.Object);
-
-        pam.GetPassword(Params.Instance(), Params.ValidServer(accessId: "configured-access-id"));
-
-        Assert.Equal("configured-access-id", capturedAccessId);
-    }
-
-    [Fact]
-    public void GetPassword_AkeylessAccessIdEnvVarEmptyString_FallsBackToConfiguredAccessId()
-    {
-        using var _ = new EnvVarScope("AKEYLESS_ACCESS_ID", "");
-
-        string? capturedAccessId = null;
-        var mock = new Mock<IAkeylessApiClient>();
-        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()))
-            .Callback<string, string>((accessId, _) => capturedAccessId = accessId)
-            .Returns("fake-token");
-        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
-            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
-
-        var pam = new AkeylessPam(_ => mock.Object);
-
-        pam.GetPassword(Params.Instance(), Params.ValidServer(accessId: "configured-access-id"));
-
-        Assert.Equal("configured-access-id", capturedAccessId);
-    }
-
-    [Fact]
-    public void GetPassword_AkeylessAccessIdEnvVarWhitespaceOnly_FallsBackToConfiguredAccessId()
-    {
-        using var _ = new EnvVarScope("AKEYLESS_ACCESS_ID", "   ");
+        using var _ = new EnvVarScope("AKEYLESS_ACCESS_ID", envValue);
 
         string? capturedAccessId = null;
         var mock = new Mock<IAkeylessApiClient>();
@@ -594,50 +539,13 @@ public class EnvironmentVariableOverrideTests
         Assert.Equal("env-access-key", capturedAccessKey);
     }
 
-    [Fact]
-    public void GetPassword_AkeylessAccessKeyEnvVarUnset_FallsBackToConfiguredAccessKey()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GetPassword_AkeylessAccessKeyEnvVarUnsetOrBlank_FallsBackToConfiguredAccessKey(string? envValue)
     {
-        using var _ = new EnvVarScope("AKEYLESS_ACCESS_KEY", null);
-
-        string? capturedAccessKey = null;
-        var mock = new Mock<IAkeylessApiClient>();
-        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()))
-            .Callback<string, string>((_, accessKey) => capturedAccessKey = accessKey)
-            .Returns("fake-token");
-        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
-            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
-
-        var pam = new AkeylessPam(_ => mock.Object);
-
-        pam.GetPassword(Params.Instance(), Params.ValidServer(accessKey: "configured-access-key"));
-
-        Assert.Equal("configured-access-key", capturedAccessKey);
-    }
-
-    [Fact]
-    public void GetPassword_AkeylessAccessKeyEnvVarEmptyString_FallsBackToConfiguredAccessKey()
-    {
-        using var _ = new EnvVarScope("AKEYLESS_ACCESS_KEY", "");
-
-        string? capturedAccessKey = null;
-        var mock = new Mock<IAkeylessApiClient>();
-        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()))
-            .Callback<string, string>((_, accessKey) => capturedAccessKey = accessKey)
-            .Returns("fake-token");
-        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
-            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
-
-        var pam = new AkeylessPam(_ => mock.Object);
-
-        pam.GetPassword(Params.Instance(), Params.ValidServer(accessKey: "configured-access-key"));
-
-        Assert.Equal("configured-access-key", capturedAccessKey);
-    }
-
-    [Fact]
-    public void GetPassword_AkeylessAccessKeyEnvVarWhitespaceOnly_FallsBackToConfiguredAccessKey()
-    {
-        using var _ = new EnvVarScope("AKEYLESS_ACCESS_KEY", "   ");
+        using var _ = new EnvVarScope("AKEYLESS_ACCESS_KEY", envValue);
 
         string? capturedAccessKey = null;
         var mock = new Mock<IAkeylessApiClient>();
@@ -674,63 +582,17 @@ public class EnvironmentVariableOverrideTests
         mock.Verify(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
-    [Fact]
-    public void GetPassword_AkeylessAuthTypeEnvVarUnset_FallsBackToConfiguredAuthType()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    // A trailing newline (e.g. from file-mounted/envFrom secret provisioning) must not cause the
+    // resolved auth type to fail the "access_key" match and fall into the unsupported-auth-type path.
+    [InlineData("access_key\n")]
+    public void GetPassword_AkeylessAuthTypeEnvVarUnsetOrBlankOrHasTrailingNewline_FallsBackToOrTrims(
+        string? envValue)
     {
-        using var _ = new EnvVarScope("AKEYLESS_AUTH_TYPE", null);
-
-        var mock = new Mock<IAkeylessApiClient>();
-        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>())).Returns("fake-token");
-        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
-            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
-
-        var pam = new AkeylessPam(_ => mock.Object);
-
-        pam.GetPassword(Params.Instance(), Params.ValidServer(authType: "access_key"));
-
-        mock.Verify(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-    }
-
-    [Fact]
-    public void GetPassword_AkeylessAuthTypeEnvVarEmptyString_FallsBackToConfiguredAuthType()
-    {
-        using var _ = new EnvVarScope("AKEYLESS_AUTH_TYPE", "");
-
-        var mock = new Mock<IAkeylessApiClient>();
-        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>())).Returns("fake-token");
-        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
-            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
-
-        var pam = new AkeylessPam(_ => mock.Object);
-
-        pam.GetPassword(Params.Instance(), Params.ValidServer(authType: "access_key"));
-
-        mock.Verify(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-    }
-
-    [Fact]
-    public void GetPassword_AkeylessAuthTypeEnvVarWhitespaceOnly_FallsBackToConfiguredAuthType()
-    {
-        using var _ = new EnvVarScope("AKEYLESS_AUTH_TYPE", "   ");
-
-        var mock = new Mock<IAkeylessApiClient>();
-        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>())).Returns("fake-token");
-        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
-            .ReturnsAsync(new Dictionary<string, string> { ["pam/test/secret"] = "value" });
-
-        var pam = new AkeylessPam(_ => mock.Object);
-
-        pam.GetPassword(Params.Instance(), Params.ValidServer(authType: "access_key"));
-
-        mock.Verify(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-    }
-
-    [Fact]
-    public void GetPassword_AkeylessAuthTypeEnvVarHasTrailingNewline_IsTrimmedBeforeUse()
-    {
-        // A trailing newline (e.g. from file-mounted/envFrom secret provisioning) must not cause the
-        // resolved auth type to fail the "access_key" match and fall into the unsupported-auth-type path.
-        using var _ = new EnvVarScope("AKEYLESS_AUTH_TYPE", "access_key\n");
+        using var _ = new EnvVarScope("AKEYLESS_AUTH_TYPE", envValue);
 
         var mock = new Mock<IAkeylessApiClient>();
         mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>())).Returns("fake-token");
