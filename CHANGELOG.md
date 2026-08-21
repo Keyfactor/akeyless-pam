@@ -6,6 +6,10 @@
 - Environment variable overrides are trimmed of leading/trailing whitespace before use.
 - Hardened validation and logging around connection parameters and authentication failures.
 
+## Fixes
+
+- **Sanitized `ApiException` in secret retrieval** — a failed Akeyless secret lookup (e.g. HTTP error from `GetSecretValuesAsync`) previously let the raw SDK exception propagate to Keyfactor Command's logs. The SDK's `ApiException.Message` can echo back portions of the request, including the live auth token. Secret retrieval now catches `ApiException`, logs only the HTTP status code, and throws a sanitized `InvalidSecretConfigurationException`, matching the existing pattern in authentication (`InitClient`).
+
 # v1.0.0
 
 Initial release of the Akeyless PAM Provider for Keyfactor Command and Universal Orchestrator.

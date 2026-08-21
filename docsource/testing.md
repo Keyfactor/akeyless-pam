@@ -81,6 +81,7 @@ Integration tests load credentials from environment variables. As a convenience 
 | `GetPassword_StaticJson_MissingField_ThrowsInvalidSecretConfigurationException` | JSON content, requested field absent → exception |
 | `GetPassword_SecretNotInResponse_ThrowsInvalidSecretConfigurationException` | API response does not contain the requested secret name → exception |
 | `GetPassword_EmptySecretValue_ThrowsInvalidSecretConfigurationException` | Secret found but value is empty → exception |
+| `GetPassword_GetSecretValuesThrowsApiException_WrapsAsInvalidSecretConfigurationException` | `GetSecretValuesAsync` throws `ApiException` → sanitized `InvalidSecretConfigurationException` (message excludes the raw SDK exception content) |
 
 #### Configuration Model (`AkeylessConfigurationTests`)
 

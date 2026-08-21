@@ -614,6 +614,24 @@ public class SecretRetrievalTests
     }
 
     [Fact]
+    public void GetPassword_GetSecretValuesThrowsApiException_WrapsAsInvalidSecretConfigurationException()
+    {
+        var mock = new Mock<IAkeylessApiClient>();
+        mock.Setup(c => c.Authenticate(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("fake-token");
+        mock.Setup(c => c.GetSecretValuesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+            .Throws(new ApiException(404, "Not Found: request body echo including fake-token"));
+
+        var pam = new AkeylessPam(_ => mock.Object);
+
+        var ex = Assert.Throws<AggregateException>(() =>
+            pam.GetPassword(Params.Instance(), Params.ValidServer()));
+
+        var inner = Assert.IsType<InvalidSecretConfigurationException>(ex.InnerException);
+        Assert.DoesNotContain("fake-token", inner.Message);
+    }
+
+    [Fact]
     public void GetPassword_StaticText_JsonContent_ReturnsFullJsonBlob()
     {
         const string json = "{\"username\":\"admin\",\"password\":\"s3cr3t\"}";
