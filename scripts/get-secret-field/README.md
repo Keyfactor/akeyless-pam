@@ -6,12 +6,12 @@ fetch the secret, then extract one or more fields from it client-side. Use
 these to verify Akeyless connectivity and credentials before configuring the
 PAM provider in Keyfactor Command — no build or deployment required.
 
-Two equivalent implementations are provided:
+Both scripts are equivalent — pick whichever fits your environment:
 
-- `get-secret-field.ps1` (PowerShell — Windows/macOS/Linux with `pwsh`)
-- `get-secret-field.sh` (Bash — requires `curl` and `jq`)
+- `get-secret-field.ps1` (PowerShell)
+- `get-secret-field.sh` (Bash)
 
-## Setup
+## Shared setup
 
 1. Copy the example env file and fill in your real values:
 
@@ -31,19 +31,23 @@ Two equivalent implementations are provided:
 
    `get-secret-field.env` is gitignored — it will never be committed.
 
-## Run
+## PowerShell
 
-PowerShell:
+Requires PowerShell 7+ (`pwsh`) — works on Windows, macOS, and Linux.
 
 ```
 pwsh -File ./get-secret-field.ps1
 ```
 
-Bash:
+## Bash
+
+Requires `bash`, `curl`, and `jq`.
 
 ```
 ./get-secret-field.sh
 ```
+
+## Output
 
 Each field in `AKEYLESS_FIELD_NAMES` is printed as `field = value`. Verbose
 `[debug]` lines show every step (env file parsing, requests/responses,
@@ -56,6 +60,6 @@ with a non-zero status and lists the missing field(s).
 - Values can also be supplied as real environment variables instead of the
   `.env` file — anything already set in the environment takes precedence
   over the file.
-- These scripts auto-detect whether the secret value is JSON-formatted
+- Both scripts auto-detect whether the secret value is JSON-formatted
   (`{"key":"value"}`) or line-based (`key=value`), matching the PAM
   provider's own parsing logic.
