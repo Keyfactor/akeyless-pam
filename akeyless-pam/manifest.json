@@ -7,7 +7,7 @@
       }
     }
   },
-  "Keyfactor:PAMProviders:Akeyless-:InitializationInfo": {
+  "Keyfactor:PAMProviders:Akeyless-PAM:InitializationInfo": {
     "Url": "https://api.akeyless.io",
     "AuthType": "access_key",
     "AccessId": "<ACCESS_ID>",
