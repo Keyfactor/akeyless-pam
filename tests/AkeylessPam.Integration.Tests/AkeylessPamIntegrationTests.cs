@@ -199,6 +199,12 @@ public class AkeylessPamIntegrationTests
             ["SecretName"] = Env("AKEYLESS_SECRET_STATIC_TEXT")
         };
 
+        // AKEYLESS_ACCESS_ID/AKEYLESS_ACCESS_KEY (required for every other test in this suite to run)
+        // would otherwise override the bad credentials above via AkeylessPam's env var override support,
+        // making auth succeed instead of failing. Clear them for the duration of this test only.
+        using var idScope = new EnvVarScope("AKEYLESS_ACCESS_ID", null);
+        using var keyScope = new EnvVarScope("AKEYLESS_ACCESS_KEY", null);
+
         var pam = new AkeylessPam();
         var ex = Assert.Throws<AggregateException>(() => pam.GetPassword(instance, server));
         Assert.IsType<InvalidClientConfigurationException>(ex.InnerException);

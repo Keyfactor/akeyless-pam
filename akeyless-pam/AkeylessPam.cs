@@ -135,51 +135,157 @@ public class AkeylessPam : IPAMProvider
         }
     }
 
+    /// <summary>
+    ///     Resolves an environment variable override for a connection parameter.
+    /// </summary>
+    /// <param name="envVarName">The name of the environment variable to check.</param>
+    /// <returns>
+    ///     The environment variable's value, trimmed of leading/trailing whitespace, if it is set to a non-empty,
+    ///     non-whitespace string; otherwise, <c>null</c> so the caller falls back to the configured value.
+    /// </returns>
+    /// <remarks>
+    ///     Unlike a plain <c>??</c> null-coalesce against <see cref="Environment.GetEnvironmentVariable(string)" />,
+    ///     this treats an env var explicitly set to an empty or whitespace-only string the same as an unset env
+    ///     var — it does not override the configured value. This avoids a misconfigured/blank environment variable
+    ///     silently blanking out a valid `manifest.json`/Command portal value (e.g. `Url`, `AccessId`, `AccessKey`,
+    ///     `AuthType`). The returned value is trimmed because env vars sourced from mounted secret files/configmaps
+    ///     commonly carry an incidental trailing newline, which would otherwise fail exact-match comparisons
+    ///     (auth type) or authentication (AccessId/AccessKey) with no indication that whitespace was the cause.
+    ///     <para>
+    ///         Audit trail: when an override is active, this logs which environment variable is overriding —
+    ///         never the value — so an incident investigation can tell whether the effective connection
+    ///         parameter used at runtime matches Command's recorded configuration. The resolved value is not
+    ///         content-validated here — <see cref="EnsurePrintableAscii" /> validates it (and the equivalent
+    ///         configured value, when no override is active) once the caller has settled on the final value to
+    ///         use, so the same content guarantee applies regardless of which source it came from.
+    ///     </para>
+    ///     <para>
+    ///         Logged at Warning, not Information: a host that already has one of these AKEYLESS_-prefixed
+    ///         variables set for an unrelated reason (e.g. a co-located Akeyless CLI install using the same
+    ///         conventional variable names) will silently authenticate with a different identity than Command's
+    ///         recorded configuration after upgrading to a version that reads it — with zero configuration
+    ///         change on Command's side. That's a connection-identity change, not routine operation, so it
+    ///         should surface to an operator without them having to go looking for it at Information level.
+    ///     </para>
+    /// </remarks>
+    private string ResolveEnvOverride(string envVarName)
+    {
+        var value = Environment.GetEnvironmentVariable(envVarName);
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        Logger.LogWarning("Environment variable override active for {EnvVar}", envVarName);
+        return value.Trim();
+    }
+
+    /// <summary>
+    ///     Validates that a resolved connection parameter contains only printable ASCII characters.
+    /// </summary>
+    /// <param name="value">The resolved value to validate (from either an env var override or Command's configuration).</param>
+    /// <param name="parameterName">The name of the parameter, used in the error message.</param>
+    /// <remarks>
+    ///     None of <c>Url</c>, <c>AuthType</c>, <c>AccessId</c>, or <c>AccessKey</c> are legitimately anything
+    ///     other than printable ASCII. Rather than maintain a growing blocklist of specific problem characters
+    ///     (control characters, ANSI escape sequences, Unicode line/paragraph separators, bidirectional-override
+    ///     and zero-width/variation-selector characters have all been found, one at a time, to let a value forge
+    ///     extra log lines or render differently than its actual content in the structured log messages that
+    ///     echo these values), this allowlists the narrow range of characters that are actually legitimate and
+    ///     rejects everything else in one check. Called from two places so the guarantee holds no matter which
+    ///     log statement runs first: <see cref="BuildAkeylessConfiguration" /> validates the Command-/
+    ///     manifest.json-configured value before its own log statements echo it, and <see cref="InitClient" />
+    ///     separately validates the final resolved value (which may instead be an env var override) before its
+    ///     own log statements echo that.
+    /// </remarks>
+    /// <exception cref="InvalidClientConfigurationException">
+    ///     Thrown if the value contains any character outside the printable ASCII range (0x20-0x7E).
+    /// </exception>
+    private void EnsurePrintableAscii(string value, string parameterName)
+    {
+        if (value != null && value.All(c => c is >= (char)0x20 and <= (char)0x7E)) return;
+
+        // Logged before throwing, like every other validation failure in this class (ValidateRequiredParameter,
+        // ValidateAuthTypeAccessKey, the unsupported-auth-type checks, model validation) — without this, a
+        // rejected log-injection/spoofing attempt would leave no audit trail at all, defeating the point of
+        // having caught it. The value itself is never logged, only the parameter name.
+        Logger.LogError(
+            "{ParameterName} contains a non-printable or non-ASCII character; refusing to use it", parameterName);
+        throw new InvalidClientConfigurationException(
+            $"{parameterName} contains a non-printable or non-ASCII character and cannot be used.");
+    }
+
+    /// <summary>
+    ///     Resolves a connection parameter from its env var override (if active) or its configured value, then
+    ///     validates the result via <see cref="EnsurePrintableAscii" />.
+    /// </summary>
+    private string ResolveAndValidate(string envVarName, string configuredValue, string parameterName)
+    {
+        var value = ResolveEnvOverride(envVarName) ?? configuredValue;
+        EnsurePrintableAscii(value, parameterName);
+        return value;
+    }
+
     private IAkeylessApiClient InitClient(AkeylessConfiguration configurationInfo)
     {
+        // Hoisted above the try block (rather than declared with the other resolved values inside it) so the
+        // ApiException catch below can still report which AccessId the failed authentication attempt used —
+        // that identity may differ from Command's recorded configuration when an env var override is active.
+        string accessId = null;
         try
         {
             Logger.MethodEntry();
-            var basePath = Environment.GetEnvironmentVariable("AKEYLESS_API_URL") ??
-                           configurationInfo.Url ?? "https://api.akeyless.io";
+            // configurationInfo.Url is always populated by BuildAkeylessConfiguration (which owns the
+            // default-URL fallback), so no second fallback is needed here.
+            var basePath = ResolveAndValidate("AKEYLESS_API_URL", configurationInfo.Url, "Url");
+            Logger.LogDebug("Connecting to Akeyless at '{Url}'", basePath);
+
+            var authType = ResolveAndValidate("AKEYLESS_AUTH_TYPE", configurationInfo.AuthType, "AuthType");
+            accessId = ResolveAndValidate("AKEYLESS_ACCESS_ID", configurationInfo.AccessId, "AccessId");
+            var accessKey = ResolveAndValidate("AKEYLESS_ACCESS_KEY", configurationInfo.AccessKey, "AccessKey");
+
+            // AuthType from configurationInfo already passed ValidateServerConfigurationParams, but an
+            // AKEYLESS_AUTH_TYPE override bypasses that check entirely, so re-validate the resolved value
+            // here — otherwise an unrecognised override silently falls through to "no authentication
+            // performed" below instead of failing fast.
+            if (!AkeylessConfiguration.SupportedAuthMethods.Contains(authType))
+            {
+                Logger.LogError(
+                    "Unsupported auth type '{AuthType}' resolved for Akeyless client initialization", authType);
+                throw new InvalidClientConfigurationException(
+                    $"Invalid auth type '{authType}' specified. Supported auth types are: [{string.Join(", ", AkeylessConfiguration.SupportedAuthMethods)}].");
+            }
 
             var client = _clientFactory(basePath);
 
-            switch (configurationInfo.AuthType)
+            // authType is provably "access_key" here — the SupportedAuthMethods guard clause above
+            // already rejected anything else, and that's currently the only supported value.
+            Logger.LogDebug("Authenticating with Akeyless using access_key auth, AccessId: '{AccessId}'",
+                accessId);
+            var token = client.Authenticate(accessId, accessKey);
+
+            if (string.IsNullOrEmpty(token))
             {
-                case "access_key":
-                    Logger.LogDebug("Authenticating with Akeyless using access_key auth, AccessId: '{AccessId}'",
-                        configurationInfo.AccessId);
-                    var token = client.Authenticate(configurationInfo.AccessId, configurationInfo.AccessKey);
-
-                    if (string.IsNullOrEmpty(token))
-                    {
-                        Logger.LogError(
-                            "Authentication failed: unable to obtain access token from Akeyless for AccessId '{AccessId}'",
-                            configurationInfo.AccessId);
-                        throw new InvalidTokenException("Unable to obtain access token from Akeyless server");
-                    }
-
-                    AuthToken = token;
-                    Logger.LogInformation(
-                        "Successfully authenticated with Akeyless using AccessId '{AccessId}'",
-                        configurationInfo.AccessId);
-                    break;
-
-                default:
-                    Logger.LogWarning(
-                        "No authentication performed for unrecognised auth type '{AuthType}'",
-                        configurationInfo.AuthType);
-                    break;
+                Logger.LogError(
+                    "Authentication failed: unable to obtain access token from Akeyless for AccessId '{AccessId}'",
+                    accessId);
+                throw new InvalidTokenException("Unable to obtain access token from Akeyless server");
             }
+
+            AuthToken = token;
+            Logger.LogInformation(
+                "Successfully authenticated with Akeyless using AccessId '{AccessId}'",
+                accessId);
 
             return client;
         }
         catch (ApiException ex)
         {
-            // NOTE: ex.Message is intentionally excluded — ApiException error content may echo back
-            // portions of the auth request body, including credentials.
-            Logger.LogError(ex, "Akeyless API exception during authentication (HTTP {StatusCode})", ex.ErrorCode);
+            // NOTE: the exception object itself (not just ex.Message) is intentionally excluded from
+            // the log call — ApiException error content may echo back portions of the auth request
+            // body, including credentials, and most ILogger providers render an attached exception's
+            // Message/ToString() regardless of the message template, so passing `ex` here would defeat
+            // that exclusion.
+            Logger.LogError(
+                "Akeyless API exception during authentication (HTTP {StatusCode}) for AccessId '{AccessId}'",
+                ex.ErrorCode, accessId);
             throw new InvalidClientConfigurationException(
                 $"Unable to authenticate to Akeyless API (HTTP {ex.ErrorCode}). Check AccessId and AccessKey configuration.");
         }
@@ -331,7 +437,6 @@ public class AkeylessPam : IPAMProvider
         try
         {
             Logger.MethodEntry();
-            Logger.LogDebug("Connecting to Akeyless at '{Url}'", configurationInfo.Url);
             var client = InitClient(configurationInfo);
 
             switch (configurationInfo.SecretType)
@@ -533,7 +638,11 @@ public class AkeylessPam : IPAMProvider
                     "Akeyless configuration is invalid, please review server logs.");
             }
 
-            if (!connectionConfiguration.TryGetValue(AkeylessConfiguration.AUTH_TYPE, out var authType))
+            // string.IsNullOrEmpty (not just TryGetValue's presence check) so a dictionary entry explicitly
+            // bound to null - as well as an absent key - defaults to 'access_key' instead of crashing the
+            // .Trim() call below with a NullReferenceException.
+            if (!connectionConfiguration.TryGetValue(AkeylessConfiguration.AUTH_TYPE, out var authType) ||
+                string.IsNullOrEmpty(authType))
             {
                 Logger.LogWarning(
                     "'{AuthType}' parameter not provided; defaulting to 'access_key'",
@@ -541,12 +650,27 @@ public class AkeylessPam : IPAMProvider
                 authType = "access_key";
             }
 
+            authType = authType.Trim();
+
+            // Same null-safety as above: GetValueOrDefault only substitutes the fallback for an absent key,
+            // not one explicitly bound to null, so the null case is handled before .Trim() rather than by it.
+            var configuredUrl = connectionConfiguration.GetValueOrDefault(AkeylessConfiguration.AKEYLESS_API_URL);
+
             var config = new AkeylessConfiguration
             {
-                Url = connectionConfiguration.GetValueOrDefault(AkeylessConfiguration.AKEYLESS_API_URL,
-                    AkeylessConstants.DefaultAkeylessApiUrl),
+                // Trimmed like ResolveEnvOverride's env-var values are — Command-portal/manifest.json
+                // values commonly carry an incidental trailing newline too, and this PR's own hardening
+                // must not turn that previously-benign artifact into a hard configuration failure.
+                Url = (string.IsNullOrWhiteSpace(configuredUrl) ? AkeylessConstants.DefaultAkeylessApiUrl : configuredUrl)
+                    .Trim(),
                 AuthType = authType
             };
+            // Validated here, before the first log statement that echoes these values, rather than relying
+            // on InitClient's later EnsurePrintableAscii calls — those run on a separate, later call path
+            // (GetAkeylessSecretAsync -> InitClient) and would leave a malicious/malformed Command-configured
+            // value (no env var override needed) logged raw by the two LogDebug calls below.
+            EnsurePrintableAscii(config.Url, "Url");
+            EnsurePrintableAscii(config.AuthType, "AuthType");
             Logger.LogDebug("Using Akeyless URL '{Url}', auth type '{AuthType}'", config.Url, config.AuthType);
 
             switch (authType)
@@ -555,8 +679,10 @@ public class AkeylessPam : IPAMProvider
                     Logger.LogDebug("Implicit auth type configured; credentials expected via environment variables");
                     break;
                 case "access_key":
-                    config.AccessId = connectionConfiguration[AkeylessConfiguration.ACCESS_ID];
-                    config.AccessKey = connectionConfiguration[AkeylessConfiguration.ACCESS_KEY];
+                    config.AccessId = connectionConfiguration[AkeylessConfiguration.ACCESS_ID].Trim();
+                    config.AccessKey = connectionConfiguration[AkeylessConfiguration.ACCESS_KEY].Trim();
+                    EnsurePrintableAscii(config.AccessId, "AccessId");
+                    EnsurePrintableAscii(config.AccessKey, "AccessKey");
                     // NOTE: AccessId logged (not secret), AccessKey intentionally omitted.
                     Logger.LogDebug("Access key auth configured with AccessId '{AccessId}'", config.AccessId);
                     break;

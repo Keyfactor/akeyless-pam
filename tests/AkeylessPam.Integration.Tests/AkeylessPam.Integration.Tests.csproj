@@ -25,4 +25,8 @@
         <ProjectReference Include="..\..\akeyless-pam\akeyless-pam.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <Compile Include="..\AkeylessPam.Unit.Tests\EnvVarScope.cs" Link="EnvVarScope.cs"/>
+    </ItemGroup>
+
 </Project>
