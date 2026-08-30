@@ -419,6 +419,19 @@ public class AkeylessPam : IPAMProvider
                 configurationInfo.SecretName, configurationInfo.SecretType);
             return result;
         }
+        catch (ApiException ex)
+        {
+            // NOTE: the exception object itself (not just ex.Message) is intentionally excluded from
+            // the log call — see the matching comment in InitClient. ApiException error content may
+            // echo back portions of the request, including the live auth token, and most ILogger
+            // providers render an attached exception's Message/ToString() regardless of the message
+            // template, so passing `ex` here would defeat that exclusion.
+            Logger.LogError(
+                "Akeyless API exception while retrieving secret '{SecretName}' (HTTP {StatusCode})",
+                configurationInfo.SecretName, ex.ErrorCode);
+            throw new InvalidSecretConfigurationException(
+                $"Unable to retrieve secret '{configurationInfo.SecretName}' from Akeyless (HTTP {ex.ErrorCode}).");
+        }
         finally
         {
             Logger.MethodExit();
