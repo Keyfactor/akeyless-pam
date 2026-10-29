@@ -215,4 +215,3 @@ host=db.example.com
 | `SecretName` | `/my-org/my-app/db-credentials` |
 | `SecretType` | `static_kv` |
 | `StaticSecretFieldName` | `password` |
-
